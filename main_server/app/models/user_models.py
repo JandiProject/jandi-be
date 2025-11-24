@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import Column, String, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID  # Postgres 전용 UUID 타입
-from .database import Base
+from app.dependencies.database import Base
 from pydantic import BaseModel
 
 class User(Base):

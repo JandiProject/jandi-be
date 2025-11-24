@@ -7,8 +7,11 @@ import json
 from mail_server import email_service
 import time
 
-# 환경 변수 설정
-RABBITMQ_URL = os.getenv('RABBITMQ_URL', 'amqp://guest:guest@rabbitmq:5672/%2f')
+# 환경 변수에서 RabbitMQ 접속 정보 로드
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', 'localhost')
+RABBITMQ_PORT = os.getenv('RABBITMQ_PORT', 5672)
+RABBITMQ_USER = os.getenv('RABBITMQ_USER', 'guest')
+RABBITMQ_PASS = os.getenv('RABBITMQ_PASS', 'guest')
 EMAIL_QUEUE_NAME = "mail_send_queue"
 
 
@@ -42,6 +45,11 @@ def callback(ch, method, properties, body):
 
 def start_pika_consumer():
     print("👂 Pika Consumer thread starting...")
+
+    global pika_connection
+
+    # RabbitMQ URL 구성
+    url = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/%2f"
     
     # 주의: Pika의 BlockingConnection은 스레드 내에서만 안전하다고 함
     try:
@@ -68,6 +76,8 @@ def start_pika_consumer():
     except pika.exceptions.AMQPConnectionError as e:
         print(f"❌ Error connecting to RabbitMQ: {e}. Retrying in 5s...")
         time.sleep(5)
+    except KeyboardInterrupt:
+        print("🛑 Pika Consumer thread stopped manually.")
     except Exception as e:
         print(f"🔥 Fatal error in consumer thread: {e}")
     finally:

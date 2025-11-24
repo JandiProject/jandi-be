@@ -5,14 +5,18 @@ import uvicorn
 from fastapi import FastAPI
 import os
 import logging
-import asyncio 
 import threading 
-import time 
+import time
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from dotenv import load_dotenv 
 
 # Pika컨슈머 로직
-from mail_server.consumer import start_pika_consumer 
+from .consumer import start_pika_consumer 
+from .scheduler_service import check_and_publish_inactivity
 
-# 로깅 설정
+# 환경 변수 로드 (.env 파일 사용)
+load_dotenv() 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-#pika 컨슈머 스레드 시작함
+scheduler = AsyncIOScheduler()
+
+#fast api이벤트 핸들러
 #fast api가 비동기 메인 스레드라 그거 블로킹 안하려고 
 #동기 방식인 pika 컨슈머를 별도 백그라운드 스레드로 분리
 
@@ -33,11 +39,23 @@ async def startup_event():
     #rabbit mq서버 아직 없어서 임시주석처리
     #threading.Thread(target=start_pika_consumer, daemon=True).start()
     logger.info("🔗 RabbitMQ Consumer started in a background thread.")
+    #스케줄러 시작
+    scheduler.add_job(
+        check_and_publish_inactivity, 
+        'cron', 
+        hour=3, # 매일 새벽 3시에 실행
+        minute=0,
+        id='inactivity_check'
+    )
+    scheduler.start()
+    logger.info("⏰ Inactivity check scheduler started.")
 
 #서버 종료 시 호출됨
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("🛑 Service Stopping...")
+    if scheduler.running:
+        scheduler.shutdown()
     pass
 
 #상태 확인 엔드포인트

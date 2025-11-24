@@ -4,6 +4,7 @@
 import smtplib
 import os
 from email.mime.text import MIMEText
+# import psycopg # DB 접근이 필요하다면 이 모듈을 사용
 
 # SMTP 정보를 환경 변수에서 로드
 # 워커가 사용하는 서비스 계정의 자격증명임(발신자)

@@ -12,7 +12,12 @@ from dotenv import load_dotenv
 
 # Pika컨슈머 로직
 from .consumer import start_pika_consumer 
-from .scheduler_service import check_and_publish_inactivity
+from .scheduler_service import (check_and_publish_inactivity,
+    check_and_publish_inactivity, 
+    init_db_pool,
+    close_db_pool 
+)
+
 
 # 환경 변수 로드 (.env 파일 사용)
 load_dotenv() 
@@ -35,18 +40,16 @@ scheduler = AsyncIOScheduler()
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"🚀 Mail Worker is starting FastAPI server...")
+
+    # Psycopg3 DB Pool 초기화 추가
+    await init_db_pool()
+
     #분리된 백그라운드 스레드로. 
-    #rabbit mq서버 아직 없어서 임시주석처리
-    #threading.Thread(target=start_pika_consumer, daemon=True).start()
+    threading.Thread(target=start_pika_consumer, daemon=True).start()
     logger.info("🔗 RabbitMQ Consumer started in a background thread.")
-    #스케줄러 시작
-    scheduler.add_job(
-        check_and_publish_inactivity, 
-        'cron', 
-        hour=3, # 매일 새벽 3시에 실행
-        minute=0,
-        id='inactivity_check'
-    )
+
+    #APScheduler 스케줄러 시작
+    scheduler.add_job(check_and_publish_inactivity, 'cron', hour=3, minute=0, id='inactivity_check')
     scheduler.start()
     logger.info("⏰ Inactivity check scheduler started.")
 
@@ -56,7 +59,7 @@ async def shutdown_event():
     logger.info("🛑 Service Stopping...")
     if scheduler.running:
         scheduler.shutdown()
-    pass
+    await close_db_pool()
 
 #상태 확인 엔드포인트
 #외부의 로드밸런서가 확인할 수 있다고 함

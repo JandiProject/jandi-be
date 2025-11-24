@@ -1,13 +1,13 @@
 # scheduler_service.py (새 파일)
-import asyncio
 import os
 import json
-import pika # 메시지 발행은 Pika 동기 클라이언트 사용
-import asyncpg # 비동기 DB 접근
+import pika
+import asyncio
 import time
+import psycopg_pool # psycopg3 비동기 커넥션 풀
+import psycopg # psycopg3 기본 모듈
 
 # 환경 변수 로드
-DB_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@host:5432/db")
 MQ_HOST = os.getenv('RABBITMQ_HOST', 'localhost')
 MQ_PORT = os.getenv('RABBITMQ_PORT', 5672)
 MQ_USER = os.getenv('RABBITMQ_USER', 'guest')
@@ -28,21 +28,39 @@ WHERE
     p.user_id IS NULL;  -- 7일 내 게시물이 없는 사용자 필터링
 """
 
+# DB 커넥션 풀을 관리할 변수
+global db_pool 
+db_pool = None
+
+# DB 풀 초기화 함수 (FastAPI startup에서 호출될 수 있음)
+async def init_db_pool():
+    global db_pool
+    if db_pool is None:
+        DB_URL = os.getenv("DATABASE_URL")
+        # psycopg_pool.AsyncConnectionPool을 사용하여 풀 초기화
+        db_pool = psycopg_pool.AsyncConnectionPool(DB_URL, open=False)
+        await db_pool.open()
+        print("🐘 Psycopg3 Async DB Pool initialized.")
+
 #db에서 7일 이상 미작성 사용자를 조회하고 rabbit mq에 메일 발송 메시지 발행
 #apscheduler에 의해 비동기적으로 호출됨
 async def check_and_publish_inactivity():
     # 1. DB 연결 및 쿼리 (비동기)
     print("⏰ Starting inactivity check...")
-    conn = None
     
     # 7일 이상 미작성 사용자 이메일 목록 조회 (위의 SQL 쿼리 사용)
-    inactive_users = await conn.fetchval(SQL_QUERY) 
-    await conn.close()
+    if db_pool is None:
+        await init_db_pool()
+        
+    inactive_users_records = []
     
     try:
         # 1. DB 연결 및 쿼리 (비동기)
-        conn = await asyncpg.connect(DB_URL)
-        inactive_users_records = await conn.fetch(SQL_QUERY)
+        async with db_pool.connection() as conn:
+            async with conn.cursor() as cur:
+                # SQL 쿼리 실행 및 결과 fetch
+                await cur.execute(SQL_QUERY)
+                inactive_users_records = await cur.fetchall()
         
         # 2. RabbitMQ 메시지 발행 (동기 Pika는 발행 시 성능 문제가 적어 직접 사용)
         mq_url = f"amqp://{MQ_USER}:{MQ_PASS}@{MQ_HOST}:{MQ_PORT}/%2f"
@@ -55,7 +73,7 @@ async def check_and_publish_inactivity():
         
         published_count = 0
         for record in inactive_users_records:
-            email = record['email']
+            email = record[0]
             message = {
                 "recipient": email,
                 "subject": "활동 재개를 위한 알림",
@@ -69,6 +87,10 @@ async def check_and_publish_inactivity():
 
     except Exception as e:
         print(f"❌ Failed to run scheduled task (DB/MQ Error): {e}")
-    finally:
-        if conn:
-            await conn.close()
+        
+# --- DB 풀 종료 함수 ---
+async def close_db_pool():
+    global db_pool
+    if db_pool:
+        await db_pool.close()
+        print("🐘 Psycopg3 Async DB Pool closed.")

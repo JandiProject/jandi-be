@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:17
-    container_name: jandi-postgres
-    ports:
-      - "5432:5432"
-    restart: always
-    #배포 시 Cloud SQL 연결 설정  
-    environment:
-      - POSTGRES_USER=jandi_user
-      - POSTGRES_PASSWORD=jandi_password
-      - POSTGRES_DB=jandi_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:4.2.1-management # 배포시에 용량 크면 일반 버전으로 바꿔도 될듯  
@@ -35,7 +22,6 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
       - rabbitmq
     env_file:
       # env 파일 공유해드릴게요!
@@ -57,7 +43,6 @@ services:
     container_name: jandi-observer
     command: python main.py
     depends_on:
-      - db
       - rabbitmq
     environment:
       - DATABASE_URL=postgresql://jandi_user:jandi_password@db:5432/jandi_db
@@ -69,7 +54,6 @@ services:
     command: python main.py
     depends_on:
       - rabbitmq
-      - db
     environment:
       - RABBITMQ_HOST=rabbitmq
       - DATABASE_URL=postgresql://jandi_user:jandi_password@db:5432/jandi_db

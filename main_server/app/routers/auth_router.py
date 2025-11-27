@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-router = APIRouter(prefix="/api", tags=["Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

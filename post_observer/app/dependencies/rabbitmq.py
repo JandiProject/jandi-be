@@ -4,6 +4,7 @@ RabbitMQ 연결 및 메시지 발행
 """
 
 import os
+import ssl
 import pika
 import json
 import logging
@@ -26,6 +27,13 @@ def get_rabbitmq_connection():
     try:
         # URL 파싱하여 연결 파라미터 생성
         params = pika.URLParameters(rabbitmq_url)
+
+        # SSL 인증서 검증 비활성화 (CloudAMQP 연결용)
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        params.ssl_options = pika.SSLOptions(ssl_context)
+
         connection = pika.BlockingConnection(params)
         return connection
     except Exception as e:

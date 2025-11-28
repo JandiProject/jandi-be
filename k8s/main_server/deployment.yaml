@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-server
+  labels:
+    app: main-server
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: main-server
+  template:
+    metadata:
+      labels:
+        app: main-server
+    spec:
+      containers:
+      - name: main-server
+        image: gcr.io/프로젝트ID/main-server:latest # GKE 레지스트리 주소
+        ports:
+        - containerPort: 8080 
+        env: 
+        - name: DB_HOST
+          value: "postgres-service"

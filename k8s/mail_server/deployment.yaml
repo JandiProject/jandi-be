@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mail-server
+  labels:
+    app: mail-server
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: mail-server
+  template:
+    metadata:
+      labels:
+        app: mail-server
+    spec:
+      containers:
+      - name: mail-server
+        image: gcr.io/프로젝트ID/mail-server:latest # GKE 레지스트리 주소
+        ports:
+        - containerPort: 8080 
+        env: 
+        - name: DB_HOST
+          value: "postgres-service"

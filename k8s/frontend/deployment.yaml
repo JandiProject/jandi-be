@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gcr.io/프로젝트ID/frontend:latest # GKE 레지스트리 주소
+        ports:
+        - containerPort: 8080 
+        env: 
+        - name: DB_HOST
+          value: "postgres-service"
+        readinessProbe:
+          httpGet:
+            path: /health # 헬스 체크용 API 하나 파두면 좋습니다
+            port: 8080
+          initialDelaySeconds: 10  

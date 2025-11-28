@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jandi-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce" # GKE의 기본 로드밸런서를 쓰겠다는 뜻
+spec:
+  rules:
+  - http:
+      paths:
+      # 1. 프론트엔드 연결 (기본 경로 /)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service # frontend/service.yaml에 적은 이름
+            port:
+              number: 80
+      # 2. 백엔드 연결 (/api로 시작하면 main-server로)
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: main-server-service # 위에서 만든 서비스 이름
+            port:
+              number: 80 # 서비스의 port (targetPort 아님!)

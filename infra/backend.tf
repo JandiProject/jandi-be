@@ -1,6 +1,6 @@
 terraform {
     backend "gcs" {
-        bucket = "k8s-standard-bucket-tfstate"
+        bucket = "jandi-gdgoc-bucket-tfstate"
         prefix = "terraform/state"
     }
-}
+} 

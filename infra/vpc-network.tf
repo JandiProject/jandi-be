@@ -1,7 +1,7 @@
 # VPC와 서브넷을 프로비저닝
 module "vpc" {
     source = "terraform-google-modules/network/google"
-    version = "~> 8.0"
+    # version = "~> 8.0"
     project_id = var.project_id
     network_name = "${var.network}-${var.env_name}"
     routing_mode = "GLOBAL"

@@ -17,6 +17,7 @@ resource "google_service_account" "default" {
 
 module "gke" {
     source = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
+    version = "37.0.0"
     project_id = var.project_id
     name = var.cluster_name
     region = var.region
@@ -27,29 +28,32 @@ module "gke" {
     ip_range_services = var.ip_range_services_name
     http_load_balancing = true
     network_policy = true
-    private_cluster_config = true
+    # private_cluster_config = true
     horizontal_pod_autoscaling = true
     filestore_csi_driver = false
     enable_private_endpoint = false
     enable_private_nodes = true
     master_ipv4_cidr_block = "10.0.0.0/28"
     deletion_protection = true
+
+    service_account = "jandi-gke-sa@${var.project_id}.iam.gserviceaccount.com"
     
     node_pools = [
         {
             name = "default-node-pool"
             machine_type = "e2-standard-4"
-            node_locations = ["asia-northeast3-b", "asia-northeast3-c"]
-            min_count = 2
-            max_count = 5
-            disk_size_gb = 30
-            spot = false
-            image_type = "COS_CONTAINERD"
-            disk_type = "pd-standard"
-            logging_variant = "DEFAULT"
-            auto_repair = true
-            auto_upgrade = true
-            service_account = "jandi-gke-sa@${var.project_id}.iam.gserviceaccount.com"
+            # node_locations = ["asia-northeast3-b", "asia-northeast3-c"]
+            #node_count = 2
+            #min_count = 2
+            #max_count = 5
+            #disk_size_gb = 30
+            #spot = false
+            #image_type = "COS_CONTAINERD"
+            #disk_type = "pd-standard"
+            #logging_variant = "DEFAULT"
+            #auto_repair = true
+            #auto_upgrade = true
+
         }
     ]
 

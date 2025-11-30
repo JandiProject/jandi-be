@@ -34,7 +34,7 @@ module "gke" {
     enable_private_endpoint = false
     enable_private_nodes = true
     master_ipv4_cidr_block = "10.0.0.0/28"
-    deletion_protection = true
+    deletion_protection = false
 
     service_account = "jandi-gke-sa@${var.project_id}.iam.gserviceaccount.com"
     

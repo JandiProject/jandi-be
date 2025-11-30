@@ -143,6 +143,7 @@ vite.config.ts.timestamp-*
 .vscode/
 .pytest_cache
 /k8s/config/secret.yaml
+/jandi-chart/config/secret.yaml
 
 
 # Terraform
@@ -160,3 +161,4 @@ vite.config.ts.timestamp-*
 **/*_override.tf
 **/*_override.tf.json
 **/kubeconfig-*
+

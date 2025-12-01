@@ -48,7 +48,7 @@ def register_platform(
         "message": message
     }
 
-@router.get("/")
+@router.get("")
 def get_platforms(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
@@ -58,7 +58,7 @@ def get_platforms(
     for user_platform, platform in user_platforms:
         res.append({
             "platform_name": platform.name,
-            "account_id": user_platform.id,
+            "account_id": user_platform.account_id,
             "last_upload": user_platform.last_upload
         })
     return res

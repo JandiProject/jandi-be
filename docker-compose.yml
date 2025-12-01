@@ -15,7 +15,7 @@ services:
   #     - rabbitmq_data:/var/lib/rabbitmq
 
   main-server:
-    build: ./main_server
+    build: ./main_server 
     container_name: jandi-main-server
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
@@ -35,7 +35,7 @@ services:
   #     - .env
 
   post-observer:
-    build: ./post_observer
+    build: ./post_observer 
     container_name: jandi-observer
     command: python3 -u main.py #test_publish_new_posts.py
     depends_on:
@@ -56,6 +56,7 @@ services:
     command: python3 -u main.py
     env_file:
       - .env
+
 
 # 데이터 영구 저장을 위한 볼륨 정의
 volumes:

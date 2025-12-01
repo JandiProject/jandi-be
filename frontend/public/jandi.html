@@ -26,8 +26,12 @@
         .travel { background-color: #A600FF; }
         .food { background-color: #FF6D01; }
         .review { background-color: #EA4335; }
-        .gold { background-color: rgb(208, 192, 138); }
-        
+        .gold {
+            /* 빛 반사 효과를 위한 그라데이션 */
+            background: linear-gradient(135deg, #ffd700 0%, #fdb931 50%, #d4af37 100%);
+            /* 테두리를 살짝 주어 보석 같은 느낌 추가 */
+            border: 1px solid #cba434; 
+        }        
         .legend { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #555; padding-top: 48px; }
         .legend-item { display: flex; align-items: center; gap: 8px; }
         .legend-color { width: 14px; height: 14px; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }

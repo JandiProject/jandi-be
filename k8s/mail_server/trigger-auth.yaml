@@ -1,0 +1,15 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth 
+  namespace: default
+spec:
+  secretTargetRef:
+  - parameter: host
+    name: jandi-secret
+    key: RABBITMQ_HOST 
+    name: jandi-secret
+    key: RABBITMQ_USER 
+  - parameter: password
+    name: jandi-secret
+    key: RABBITMQ_PASS 

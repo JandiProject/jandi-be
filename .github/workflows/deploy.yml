@@ -2,8 +2,7 @@ name: Build and Push 5 Services to GCR
 
 on:
   push:
-    branches: [ "main" ]
-    branches : ["feat/deploy-to-gcr"]
+    branches: [ "main", "feat/deploy-to-gcr"]
 
 env:
   PROJECT_ID: calm-scarab-478705-c7  # [변경필요] 본인의 GCP 프로젝트 ID로 꼭 변경하세요!

@@ -35,7 +35,7 @@ services:
   post-observer:
     build: ./post_observer
     container_name: jandi-observer
-    command: python3 -u test_publish_new_posts.py
+    command: python3 -u main.py
     depends_on:
       - ai-server
     env_file:

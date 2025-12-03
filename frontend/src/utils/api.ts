@@ -1,5 +1,5 @@
-const API_HOST = import.meta.env?.VITE_API_HOST || 'localhost';
-const API_PORT = import.meta.env?.VITE_API_PORT || '8000';
+const API_HOST = import.meta.env?.VITE_API_HOST || '136.110.239.66';
+const API_PORT = import.meta.env?.VITE_API_PORT || '80';
 const BASE_URL = `http://${API_HOST}:${API_PORT}`;
 
 // Token management
@@ -34,14 +34,15 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+    const headers = new Headers(options.headers);
+
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
     const token = getToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.set('Authorization', `Bearer ${token}`);
     }
 
     try {

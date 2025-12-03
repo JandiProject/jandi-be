@@ -13,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 origins = [
     "http://localhost:3000", # 프론트엔드 URL을 여기에 입력하세요
-    "https://example.com",
+    "http://136.110.239.66:80",
 ]
 
 app.add_middleware(

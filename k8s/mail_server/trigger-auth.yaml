@@ -7,9 +7,10 @@ spec:
   secretTargetRef:
   - parameter: host
     name: jandi-secret
-    key: RABBITMQ_HOST 
+    key: RABBITMQ_HOST
+  - parameter: username
     name: jandi-secret
-    key: RABBITMQ_USER 
+    key: RABBITMQ_USER
   - parameter: password
     name: jandi-secret
-    key: RABBITMQ_PASS 
+    key: RABBITMQ_PASS

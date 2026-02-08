@@ -42,12 +42,15 @@ def send_email(recipient: str, subject: str, body_content: str):
 
             logger.info(f"[SMTP] Email sent seccessfully to {recipient}")
         
-    except smtplib.SMTPAuthenticationError:
+    except smtplib.SMTPAuthenticationError as e:
         logger.error("SMTP 인증 실패: 사용자 이름/비밀번호를 확인하세요.")
+        raise
     except smtplib.SMTPException as e:
-        logger.info(f"SMTP 전송 중 오류 발생: {e}")
+        logger.error(f"SMTP 전송 중 오류 발생: {e}")
+        raise
     except Exception as e:
         logger.error(f"예상치 못한 오류 발생: {e}", exc_info=True)
+        raise
 
 
 #콜백 함수 정의

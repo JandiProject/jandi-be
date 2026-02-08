@@ -105,6 +105,9 @@ def delete_platform(
         db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
         db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
         db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"플랫폼 삭제 중 오류 발생: {e}")

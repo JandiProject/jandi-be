@@ -166,15 +166,25 @@ def _save_to_db(url: str, title: str, date: str, topics: List[str], user_id: str
     else:
         logger.info(f"No topics found for URL: {url}")
 
-def _check_exist_post(url: str):
+def _check_exist_post(url: str, user_id: str, platform_name: str) -> bool:
     db: Session = DbSession()
-    exist_post: Posts | None = db.query(Posts).filter(Posts.url == url).first()
-    if exist_post:
-        logger.info(f"Post already exists: {url}")
+    try:
+        platform: Platform | None = db.query(Platform).filter(Platform.name == platform_name).first()
+        if not platform:
+            logger.error(f"Platform not found while checking duplicate post: {platform_name}")
+            return False
+
+        exist_post: Posts | None = db.query(Posts).filter(
+            Posts.url == url,
+            Posts.user_id == user_id,
+            Posts.platform_id == platform.platform_id,
+        ).first()
+        if exist_post:
+            logger.info(f"Post already exists: {url} (user_id={user_id}, platform={platform_name})")
+            return True
+        return False
+    finally:
         db.close()
-        return True
-    db.close()
-    return False
 
 def refresh_materialized_view():
     db: Session = DbSession()
@@ -192,7 +202,7 @@ def refresh_materialized_view():
 
 def consume_message_queue(link: str, user_id: str, platform_name: str, date: str):
     print("\n========================================")
-    if _check_exist_post(link):
+    if _check_exist_post(link, user_id, platform_name):
         return
     crawled_data = _crawl_webpage(link)
     

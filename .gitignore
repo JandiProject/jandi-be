@@ -142,9 +142,8 @@ vite.config.ts.timestamp-*
 **/__pycache__
 .vscode/
 .pytest_cache
-/k8s/config/secret.yaml
-/jandi-chart/config/secret.yaml
-
+**/secret.yaml
+jandi-chart/templates/config/secret.yaml
 
 # Terraform
 **/.terraform/

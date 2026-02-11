@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional
 import os
+import logging
 from app.dependencies.database import get_db
 from app.models.user_models import UserPlatform, Platform, UserPlatformRequest
 from app.models.post_models import Posts
@@ -17,6 +18,8 @@ router = APIRouter(
     prefix="/api/platform",
     tags=["Platform"]
 )
+
+logger = logging.getLogger(__name__)
 
 platform_register_map = {
     "velog": VelogRSSParser(),
@@ -101,16 +104,27 @@ def delete_platform(
         for post in existing_posts:
             db.delete(post)
         db.delete(existing_mapping)
+        # 삭제는 먼저 확정한다. 이후 MV 갱신 실패가 나도 삭제 자체는 성공으로 본다.
         db.commit()
-        db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
-        db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
-        db.commit()
+
+        try:
+            db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
+            db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception(
+                "Materialized view refresh failed after platform delete (user_id=%s, platform=%s)",
+                user_id,
+                req.platform_name,
+            )
     except HTTPException:
         db.rollback()
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"플랫폼 삭제 중 오류 발생: {e}")
+        logger.exception("플랫폼 삭제 중 오류 발생")
+        raise HTTPException(status_code=500, detail="플랫폼 삭제 처리 중 서버 오류가 발생했습니다.")
 
     return {
         "message": "삭제 완료"

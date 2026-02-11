@@ -40,7 +40,7 @@ def send_email(recipient: str, subject: str, body_content: str):
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(sender_email, recipient, msg.as_string())
 
-            logger.info(f"[SMTP] Email sent seccessfully to {recipient}")
+            logger.info(f"[SMTP] Email sent successfully to {recipient}")
         
     except smtplib.SMTPAuthenticationError as e:
         logger.error("SMTP 인증 실패: 사용자 이름/비밀번호를 확인하세요.")

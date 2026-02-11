@@ -44,6 +44,19 @@ def register_platform(
     if not platform_info:
         raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
 
+    is_verified = verify_ownership_via_post_title(
+        platform_name=req.platform_name,
+        account_id=req.account_id,
+        expected_user_id=user_id,
+        expected_platform_id=platform_info.platform_id
+    )
+
+    if not is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="블로그 소유권 인증에 실패했습니다. 제목에 인증 코드가 포함된 글을 올렸는지 확인해주세요."
+        )
+    
     existing_mapping = db.query(UserPlatform).filter(
         UserPlatform.user_id == user_id,
         UserPlatform.platform_id == platform_info.platform_id
@@ -52,7 +65,7 @@ def register_platform(
     # 3. Upsert
     if existing_mapping:
         existing_mapping.account_id = req.account_id
-        message = "업데이트 완료"
+        message = "업데이트 및 인증 완료"
     else:
         new_mapping = UserPlatform(
             user_id=user_id,
@@ -61,7 +74,7 @@ def register_platform(
             last_upload=None
         )
         db.add(new_mapping)
-        message = "등록 완료"
+        message = "등록 및 인증 완료"
 
     db.commit()
 
@@ -76,7 +89,7 @@ def register_platform(
             "platform": req.platform_name
         })
 
-    publish_message("platform_register", data)
+    # publish_message("platform_register", data)
 
     return {
         "message": message
@@ -139,13 +152,13 @@ def get_platforms(
 
 def generate_token(user_id: str, platform_id: int):
     payload = {
-        "user_id": user_id,
-        "platform_id": platform_id,
+        "user_id": str(user_id),
+        "platform_id": str(platform_id),
         "exp": datetime.utcnow() + timedelta(hours=1) 
     }
     return jwt.encode(payload, PLATFORM_VERIFY_SECRET, algorithm="HS256")
 
-
+@router.get("/token")
 def show_token(
     platform_name: str,
     db: Session = Depends(get_db),
@@ -178,28 +191,24 @@ def verify_ownership_via_post_title(
         logger.warning(f"검증 실패: {platform_name}/{account_id} 에서 게시글을 찾을 수 없습니다.")
         return False
 
-    # 2. 최신 글들(보통 1~3개) 중 제목에 인증 코드가 있는지 확인
-    # 보통 사용자가 방금 올린 글이 0번째 인덱스에 위치합니다.
     auth_prefix = "JANDI-AUTH-"
     
     for article in articles[:3]:  # 최근 3개의 글까지 확인
+        logger.info(f"검사 중인 제목: {article.title}")
         if auth_prefix in article.title:
-            try:
-                # 제목에서 토큰 부분만 추출 (예: "내 블로그입니다 JANDI-AUTH-xxxx")
-                # 문자열 내에서 prefix 이후의 값을 가져옵니다.
+            try:             
                 start_idx = article.title.find(auth_prefix) + len(auth_prefix)
                 token = article.title[start_idx:].split()[0].strip()
+                logger.info(f"추출된 토큰: {token[:10]}...") # 보안상 앞부분만 출력
 
-                # 3. JWT "마법의 봉투" 열어서 내용물 검증
                 decoded = jwt.decode(
                     token, 
                     PLATFORM_VERIFY_SECRET, 
                     algorithms=["HS256"]
                 )
-
-                # 쪽지 내용(Payload)이 지금 요청한 사람/플랫폼과 일치하는지 확인
-                if (decoded.get("user_id") == expected_user_id and 
-                    decoded.get("platform_id") == expected_platform_id):
+ 
+                if (str(decoded.get("user_id")) == str(expected_user_id) and 
+                    str(decoded.get("platform_id")) == str(expected_platform_id)):
                     logger.info(f"검증 성공: 유저 {expected_user_id} 가 {platform_name} 소유권을 증명함.")
                     return True
                 

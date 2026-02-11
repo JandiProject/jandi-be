@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import ssl
 import logging
 from enum import Enum
-from service import consume_message_queue, refresh_materialized_view
+from service import consume_message_queue, refresh_materialized_view, NonRetryableMessageError
 from dependencies.database import Base, engine
 from models.models import Posts
 from pika.channel import Channel
@@ -81,11 +81,16 @@ def callback_new_posts(ch: Channel, method, properties, body):
         consume_message_queue(data['article']['link'], data['user_id'], data['platform'], data['article']['published_at'])
         publish_progress(ch)
         ch.basic_ack(delivery_tag=method.delivery_tag)
+    except NonRetryableMessageError as e:
+        logger.error(f"Non-retryable failure(new_posts): {e}")
+        publish_progress(ch)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        return
     except Exception as e:
-        logger.error(f"Failed to process message(new_posts): {e}")
+        logger.exception(f"Retryable failure(new_posts): {e}")
         # 실패한 경우라도 카운팅은 해야하니 publish_progress(ch)를 호출
         publish_progress(ch)
-        ch.basic_nack(delivery_tag=method.delivery_tag)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
         return
     
 

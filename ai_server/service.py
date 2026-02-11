@@ -24,6 +24,10 @@ UPSTAGE_MODEL = 'solar-1-mini-chat'
 logger = logging.getLogger(__name__)
 
 
+class NonRetryableMessageError(Exception):
+    """Permanent failure for invalid or unsupported queue payloads."""
+
+
 
 def _normalize_date(date_str: str) -> str:
     if not date_str:
@@ -154,11 +158,15 @@ def _save_to_db(url: str, title: str, date: str, topics: List[str], user_id: str
         try:
             platform_id: Platform | None = db.query(Platform).filter(Platform.name == platform_name).first()
             if not platform_id:
-                raise ValueError(f"Platform not found: {platform_name}")
+                raise NonRetryableMessageError(f"Platform not found: {platform_name}")
             db.add(Posts(url=url, user_id=user_id, platform_id=platform_id.platform_id, date=date, category=topics[0], title=title))
             db.commit()
             db.close()
             logger.info(f"Saved to DB: {url}")
+        except NonRetryableMessageError:
+            db.rollback()
+            db.close()
+            raise
         except Exception as e:
             db.rollback()
             db.close()
@@ -171,8 +179,7 @@ def _check_exist_post(url: str, user_id: str, platform_name: str) -> bool:
     try:
         platform: Platform | None = db.query(Platform).filter(Platform.name == platform_name).first()
         if not platform:
-            logger.error(f"Platform not found while checking duplicate post: {platform_name}")
-            return False
+            raise NonRetryableMessageError(f"Platform not found: {platform_name}")
 
         exist_post: Posts | None = db.query(Posts).filter(
             Posts.url == url,

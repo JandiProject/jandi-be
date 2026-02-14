@@ -24,6 +24,10 @@ UPSTAGE_MODEL = 'solar-1-mini-chat'
 logger = logging.getLogger(__name__)
 
 
+class NonRetryableMessageError(Exception):
+    """Permanent failure for invalid or unsupported queue payloads."""
+
+
 
 def _normalize_date(date_str: str) -> str:
     if not date_str:
@@ -154,11 +158,15 @@ def _save_to_db(url: str, title: str, date: str, topics: List[str], user_id: str
         try:
             platform_id: Platform | None = db.query(Platform).filter(Platform.name == platform_name).first()
             if not platform_id:
-                raise ValueError(f"Platform not found: {platform_name}")
+                raise NonRetryableMessageError(f"Platform not found: {platform_name}")
             db.add(Posts(url=url, user_id=user_id, platform_id=platform_id.platform_id, date=date, category=topics[0], title=title))
             db.commit()
             db.close()
             logger.info(f"Saved to DB: {url}")
+        except NonRetryableMessageError:
+            db.rollback()
+            db.close()
+            raise
         except Exception as e:
             db.rollback()
             db.close()
@@ -166,15 +174,24 @@ def _save_to_db(url: str, title: str, date: str, topics: List[str], user_id: str
     else:
         logger.info(f"No topics found for URL: {url}")
 
-def _check_exist_post(url: str):
+def _check_exist_post(url: str, user_id: str, platform_name: str) -> bool:
     db: Session = DbSession()
-    exist_post: Posts | None = db.query(Posts).filter(Posts.url == url).first()
-    if exist_post:
-        logger.info(f"Post already exists: {url}")
+    try:
+        platform: Platform | None = db.query(Platform).filter(Platform.name == platform_name).first()
+        if not platform:
+            raise NonRetryableMessageError(f"Platform not found: {platform_name}")
+
+        exist_post: Posts | None = db.query(Posts).filter(
+            Posts.url == url,
+            Posts.user_id == user_id,
+            Posts.platform_id == platform.platform_id,
+        ).first()
+        if exist_post:
+            logger.info(f"Post already exists: {url} (user_id={user_id}, platform={platform_name})")
+            return True
+        return False
+    finally:
         db.close()
-        return True
-    db.close()
-    return False
 
 def refresh_materialized_view():
     db: Session = DbSession()
@@ -192,7 +209,7 @@ def refresh_materialized_view():
 
 def consume_message_queue(link: str, user_id: str, platform_name: str, date: str):
     print("\n========================================")
-    if _check_exist_post(link):
+    if _check_exist_post(link, user_id, platform_name):
         return
     crawled_data = _crawl_webpage(link)
     

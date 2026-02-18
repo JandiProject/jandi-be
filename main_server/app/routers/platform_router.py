@@ -1,19 +1,16 @@
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from typing import Optional
-import os
 import logging
 from app.dependencies.database import get_db
-from app.models.user_models import UserPlatform, Platform, UserPlatformRequest
+from app.models.user_models import UserPlatform, Platform
+from app.schemas.platform_schemas import UserPlatformRequest
 from app.models.post_models import Posts
 from app.dependencies.verify_jwt import get_current_user_id
 from app.parsers.velog import VelogRSSParser
 from app.parsers.naver import NaverRSSParser
 from app.parsers.tistory import TistoryRSSParser
 from app.dependencies.rabbitmq import publish_message
-import time
 router = APIRouter(
     prefix="/api/platform",
     tags=["Platform"]

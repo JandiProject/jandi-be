@@ -4,7 +4,7 @@ import logging
 from app.dependencies.database import get_db
 from app.models.user_models import UserPlatform, Platform
 from app.schemas.platform_schemas import UserPlatformRequest
-from app.dependencies.verify_jwt import get_current_user_id
+from app.core.verify_jwt import get_current_user_id
 from app.dependencies.rabbitmq import publish_message
 from app.services.platform_service import add_user_platform_mapping, delete_user_platform_mapping, get_platform_info, get_user_platforms, make_article_data
 router = APIRouter(

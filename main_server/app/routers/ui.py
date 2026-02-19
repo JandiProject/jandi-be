@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
-from app.dependencies.verify_jwt import get_jandi_user_id
+from app.core.verify_jwt import get_jandi_user_id
 from app.models.post_models import POST_AGG
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse

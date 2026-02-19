@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import UUID, Column, text
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -8,7 +9,7 @@ from app.parsers.tistory import TistoryRSSParser
 from app.parsers.velog import VelogRSSParser
 from app.repositories.platform_repository import PlatformRepository
 
-def get_platform_info(db, platform_name: str):
+def get_platform_info(db: Session, platform_name: str) -> Platform:
     """
     플랫폼 이름을 기반으로 플랫폼 정보를 조회하는 함수
     플랫폼이 존재하면 그 정보를 반환하고, 존재하지 않으면 404 에러를 발생시킴
@@ -39,7 +40,7 @@ def add_user_platform_mapping(db: Session, user_id: str, platform_id: Column, ac
     platform_repository.create_user_platform_mapping(user_id, platform_id, account_id)
     db.commit()
 
-def make_article_data(data, platform_name, account_id, user_id):
+def make_article_data(data: list[dict], platform_name: str, account_id: str, user_id: str) -> list[dict]:
     # TODO: 메인 서버에서 파싱 로직을 처리하는 것은 분리하는 게 좋을 것 같음 (이 함수 안 쓰는 게 목표)
 
     platform_register_map = {
@@ -63,7 +64,7 @@ def make_article_data(data, platform_name, account_id, user_id):
         })
     return data
 
-def delete_user_platform_mapping(logger, db: Session, user_id: str, platform_id: Column, platform_name: str):
+def delete_user_platform_mapping(logger: logging.Logger, db: Session, user_id: str, platform_id: Column, platform_name: str):
     """
     유저와 플랫폼 간의 매핑을 삭제하는 함수
     """
@@ -103,7 +104,7 @@ def delete_user_platform_mapping(logger, db: Session, user_id: str, platform_id:
         logger.exception("플랫폼 삭제 중 오류 발생")
         raise HTTPException(status_code=500, detail="플랫폼 삭제 처리 중 서버 오류가 발생했습니다.")
 
-def get_user_platforms(db: Session, user_id: str):
+def get_user_platforms(db: Session, user_id: str) -> list[dict]:
     """
     유저가 등록한 플랫폼 정보를 조회하는 함수
     """

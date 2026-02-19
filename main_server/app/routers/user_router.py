@@ -6,7 +6,7 @@ from app.dependencies.verify_jwt import get_current_user_id
 from app.models.user_models import UserStat, Platform
 from app.schemas.analytics_schemas import UserStatResponse
 from app.models.post_models import Post, Posts
-from datetime import datetime, date
+from datetime import date
 
 router = APIRouter(prefix='/api/user')
 

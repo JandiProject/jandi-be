@@ -40,7 +40,7 @@ def get_rabbitmq_connection():
         logger.error(f"Failed to connect to RabbitMQ: {e}")
         raise
 
-def publish_message(queue_name: str, message: Dict[str, Any]):
+def publish_message(queue_name: str, message: list[Dict[str, Any]]):
     """
     RabbitMQ 큐에 메시지 발행
 

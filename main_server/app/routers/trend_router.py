@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
-import logging
 from app.dependencies.database import get_db
 from app.schemas.trend_schemas import GetTrendingKeywordsResponse
 

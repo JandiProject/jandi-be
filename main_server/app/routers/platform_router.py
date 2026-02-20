@@ -44,9 +44,6 @@ def delete_platform(
     ):
 
     platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
-
-    if not platform_info:
-        raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
     
     platform_service.delete_user_platform_mapping(db, user_id, platform_info.platform_id, req.platform_name)
 

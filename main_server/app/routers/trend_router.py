@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 import logging
 from app.dependencies.database import get_db
-from main_server.app.schemas.trend_schemas import GetTrendingKeywordsResponse
+from app.schemas.trend_schemas import GetTrendingKeywordsResponse
 
 router = APIRouter(
     prefix="/api/trend",

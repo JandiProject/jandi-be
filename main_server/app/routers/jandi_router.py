@@ -20,14 +20,15 @@ UI_SECRET_KEY = os.getenv("UI_SECRET_KEY", "my_super_secret_key")
 ALGORITHM = "HS256"
 
 @router.get("/", response_model=list[GetJandiResponse])
-async def get_jandi(date_req: str | None = None,db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+async def get_jandi_data(date: str | None = None,db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
     # date가 없으면 오늘 날짜로 설정
-    if date_req is None:
-        date: datetime = datetime.now()
-    else:
-        date: datetime = datetime.strptime(date_req, "%Y-%m-%d")
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+    
+    dt = datetime.strptime(date, "%Y-%m-%d")
+    
     # user_id로 POST_AGG 테이블에서 데이터를 가져옴
-    posts: list[POST_AGG] = db.query(POST_AGG).filter(POST_AGG.user_id == user_id, POST_AGG.date.between(date-timedelta(days=30), date)).all()
+    posts: list[POST_AGG] = db.query(POST_AGG).filter(POST_AGG.user_id == user_id, POST_AGG.date.between(dt-timedelta(days=30), dt)).all()
     if len(posts) == 0:
         return []
     # 그걸 [GetJandiResponse]로 변환

@@ -10,7 +10,6 @@ from .routers.platform_router import router as platform_router
 from .routers.jandi_router import router as jandi_router
 from .routers.user_router import router as user_router
 from .routers.ui import router as ui_router
-from . import models
 
 import dotenv
 dotenv.load_dotenv('../.env')

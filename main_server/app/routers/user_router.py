@@ -3,7 +3,8 @@ from typing import List
 from sqlalchemy.orm import Session 
 from app.dependencies.database import get_db
 from app.core.verify_jwt import get_current_user_id
-from app.models.user_models import UserStat, Platform
+from app.models.user_models import UserStat
+from app.models.platform_models import Platform
 from app.schemas.analytics_schemas import UserStatResponse
 from app.models.post_models import Posts
 from app.schemas.post_schemas import Post

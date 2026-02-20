@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, ForeignKeyConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from app.dependencies.database import Base
-from app.models.trend_models import Keyword
 
 
 class Posts(Base):

@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
 from app.core.verify_jwt import get_current_user_id, get_jandi_user_id
-from app.models.jandi_models import GetJandiResponse
+from app.schemas.jandi_schemas import GetJandiResponse
 from app.models.post_models import POST_AGG
 from app.templates.html_template import get_html_template
 from datetime import datetime, timedelta

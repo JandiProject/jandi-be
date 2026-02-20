@@ -32,7 +32,8 @@ def register_platform(
     platform_service.make_article_data(data, req.platform_name, req.account_id, user_id)
 
     # TODO: 게시글 데이터를 통째로 MQ로 보내는 것은 비효율적임. 플랫폼 정보만 발행하는 게 나아보임. 그러면 main server에서 rss 파싱을 안해도 됨
-    publish_message("platform_register", data)
+    # 우선 메시지큐 기능 복구될 때까지 주석처리
+    # publish_message("platform_register", data)
 
     return
 
@@ -48,7 +49,7 @@ def delete_platform(
     if not platform_info:
         raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
     
-    platform_service.delete_user_platform_mapping(logger, db, user_id, platform_info.platform_id, req.platform_name)
+    platform_service.delete_user_platform_mapping(db, user_id, platform_info.platform_id, req.platform_name)
 
     return {
         "message": "삭제 완료"

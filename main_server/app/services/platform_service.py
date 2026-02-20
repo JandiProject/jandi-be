@@ -9,6 +9,9 @@ from app.parsers.tistory import TistoryRSSParser
 from app.parsers.velog import VelogRSSParser
 from app.repositories.platform_repository import PlatformRepository
 
+logger = logging.getLogger(__name__)
+
+
 def get_platform_info(db: Session, platform_name: str) -> Platform:
     """
     플랫폼 이름을 기반으로 플랫폼 정보를 조회하는 함수
@@ -64,7 +67,7 @@ def make_article_data(data: list[dict], platform_name: str, account_id: str, use
         })
     return data
 
-def delete_user_platform_mapping(logger: logging.Logger, db: Session, user_id: str, platform_id: Column, platform_name: str):
+def delete_user_platform_mapping(db: Session, user_id: str, platform_id: Column, platform_name: str):
     """
     유저와 플랫폼 간의 매핑을 삭제하는 함수
     """

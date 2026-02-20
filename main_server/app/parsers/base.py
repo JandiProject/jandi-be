@@ -4,7 +4,7 @@ import feedparser
 import httpx
 from datetime import datetime
 import logging
-from app.models.schemas import ArticleSchema
+from app.schemas.platform_schemas import ArticleSchema
 
 logger = logging.getLogger(__name__)
 

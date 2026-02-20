@@ -5,6 +5,7 @@ from app.dependencies.database import get_db
 from app.schemas.platform_schemas import UserPlatformRequest
 from app.core.verify_jwt import get_current_user_id
 from app.services import platform_service
+from app.models.platform_models import Platform
 router = APIRouter(
     prefix="/api/platform",
     tags=["Platform"]
@@ -20,7 +21,7 @@ def register_platform(
     user_id: str = Depends(get_current_user_id)
     ):
     # 플랫폼 정보 조회
-    platform_info = platform_service.get_platform_info(db, req.platform_name)
+    platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
 
     # 유저-플랫폼 매핑 추가 또는 업데이트
     platform_service.add_user_platform_mapping(db, user_id, platform_info.platform_id, req.account_id)
@@ -42,7 +43,7 @@ def delete_platform(
     user_id: str = Depends(get_current_user_id)
     ):
 
-    platform_info = platform_service.get_platform_info(db, req.platform_name)
+    platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
 
     if not platform_info:
         raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
@@ -58,5 +59,5 @@ def get_platforms(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
     ):
-    res = platform_service.get_user_platforms(db, user_id)
+    res: list[dict] = platform_service.get_user_platforms(db, user_id)
     return res

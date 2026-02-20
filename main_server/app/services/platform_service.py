@@ -1,9 +1,8 @@
 import logging
-from sqlalchemy import UUID, Column, text
+from sqlalchemy import Column, text
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.models.post_models import Posts
-from app.models.user_models import Platform, UserPlatform
+from app.models.platform_models import Platform, UserPlatform
 from app.parsers.naver import NaverRSSParser
 from app.parsers.tistory import TistoryRSSParser
 from app.parsers.velog import VelogRSSParser

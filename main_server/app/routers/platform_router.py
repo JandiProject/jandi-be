@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import logging
 from app.dependencies.database import get_db
-from app.models.user_models import UserPlatform, Platform
 from app.schemas.platform_schemas import UserPlatformRequest
 from app.core.verify_jwt import get_current_user_id
-from app.dependencies.rabbitmq import publish_message
 from app.services import platform_service
 router = APIRouter(
     prefix="/api/platform",

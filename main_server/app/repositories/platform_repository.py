@@ -1,6 +1,6 @@
 from sqlalchemy import Column
 from app.models.post_models import Posts
-from app.models.user_models import Platform, UserPlatform
+from app.models.platform_models import Platform, UserPlatform
 from sqlalchemy.orm import Session
 
 

@@ -15,22 +15,6 @@ class User(Base):
     notify_email = Column(Boolean, default=False)
     
 
-
-class Platform(Base):
-    __tablename__ = "PLATFORM"
-    
-    platform_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), unique=True)  
-
-class UserPlatform(Base):
-    __tablename__ = "USER_PLATFORM"
-    
-    user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id"), primary_key=True)
-    platform_id = Column(UUID(as_uuid=True), ForeignKey("PLATFORM.platform_id"), primary_key=True)
-    
-    account_id = Column("id", String(255)) 
-    last_upload = Column(DateTime, nullable=True)
-
 class AuthUser(Base):
     __tablename__ = "AUTH_USER"
 
@@ -51,6 +35,7 @@ class UserStat(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     count = Column(Integer, default=0)
 
+# view라서 일단 주석처리
 # class UserLevel(Base):
 #     __tablename__ = "USER_LEVEL"
 
@@ -63,6 +48,7 @@ class LevelThreshold(Base):
 
     level_name = Column(String, primary_key=True)
     min_post = Column(Integer, nullable=False)
+
 class Fields(Base):
     __tablename__ = 'FIELDS'
     field_id = Column(Integer, primary_key=True, autoincrement=True, default=1)

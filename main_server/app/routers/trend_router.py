@@ -18,7 +18,7 @@ def get_trending_keywords(
     
     :param db: 데이터베이스 세션
     :type db: Session
-    :param field: 키워드의 분야 (예: "It", "Bio", "Electreonics"). 필수.
+    :param field: 키워드의 분야 (예: "It", "Bio", "Electronics"). 필수.
     :type field: str | None
     """
     if field is None:

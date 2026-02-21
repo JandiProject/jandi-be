@@ -11,9 +11,6 @@ from .routers.jandi_router import router as jandi_router
 from .routers.user_router import router as user_router
 from .routers.ui import router as ui_router
 
-import dotenv
-dotenv.load_dotenv('../.env')
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup

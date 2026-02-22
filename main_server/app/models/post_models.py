@@ -13,7 +13,7 @@ class Posts(Base):
         primary_key=True,
     )
     platform_id = Column(
-        UUID(as_uuid=True),
+        Integer,
         ForeignKey("PLATFORM.platform_id"),
         nullable=False,
         primary_key=True,
@@ -41,7 +41,7 @@ class POST_KEYWORD(Base):
 
     url = Column(String, nullable=False, primary_key=True)
     user_id = Column(UUID(as_uuid=True), nullable=False, primary_key=True)
-    platform_id = Column(UUID(as_uuid=True), nullable=False, primary_key=True)
+    platform_id = Column(Integer, nullable=False, primary_key=True)
     keyword_id = Column(
         Integer,
         ForeignKey("KEYWORDS.id", ondelete="CASCADE", onupdate="CASCADE"),

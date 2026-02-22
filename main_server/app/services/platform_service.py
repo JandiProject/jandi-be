@@ -44,7 +44,6 @@ def add_user_platform_mapping(db: Session, user_id: str, platform_id: Column, ac
 
 def make_article_data(data: list[dict], platform_name: str, account_id: str, user_id: str) -> list[dict]:
     # TODO: 메인 서버에서 파싱 로직을 처리하는 것은 분리하는 게 좋을 것 같음 (이 함수 안 쓰는 게 목표)
-
     platform_register_map = {
     "velog": VelogRSSParser(),
     "naver": NaverRSSParser(),

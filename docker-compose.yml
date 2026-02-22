@@ -2,17 +2,17 @@ version: '3.8'
 
 services:
 
-  # rabbitmq:
-  #   image: rabbitmq:4.2.1-management # 배포시에 용량 크면 일반 버전으로 바꿔도 될듯  
-  #   container_name: jandi-rabbitmq
-  #   restart: always
-  #   ports:
-  #     - "5672:5672" # 서비스 간 통신 포트
-  #     - "15672:15672" # 관리자 웹 UI 포트 (접속: localhost:15672)  
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - rabbitmq_data:/var/lib/rabbitmq
+  rabbitmq:
+    image: rabbitmq:4.2.1-management # 배포시에 용량 크면 일반 버전으로 바꿔도 될듯  
+    container_name: jandi-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672" # 서비스 간 통신 포트
+      - "15672:15672" # 관리자 웹 UI 포트 (접속: localhost:15672)  
+    env_file:
+      - .env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   main-server:
     build: ./main_server
@@ -58,3 +58,4 @@ services:
 # 데이터 영구 저장을 위한 볼륨 정의
 volumes:
   rabbitmq_data:
+  pg-data:

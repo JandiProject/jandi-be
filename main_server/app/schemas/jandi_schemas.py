@@ -1,5 +1,9 @@
-from app.dependencies.database import Base
 from pydantic import BaseModel
+
+
+class JandiBaseSchema(BaseModel):
+    pass
+
 
 class GetJandiResponse(BaseModel):
     date: str

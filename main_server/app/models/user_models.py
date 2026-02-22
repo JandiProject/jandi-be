@@ -1,10 +1,8 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, Integer
+from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID  # Postgres 전용 UUID 타입
 from app.dependencies.database import Base
-from pydantic import BaseModel
-from typing import List
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "USER"
@@ -12,30 +10,10 @@ class User(Base):
     email = Column(String(255))
     name = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
-
-class Platform(Base):
-    __tablename__ = "PLATFORM"
+    color_theme = Column(JSON, nullable=True)
+    is_public = Column(Boolean, default=False)
+    notify_email = Column(Boolean, default=False)
     
-    platform_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), unique=True)  
-
-class UserPlatform(Base):
-    __tablename__ = "USER_PLATFORM"
-    
-    user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id"), primary_key=True)
-    platform_id = Column(UUID(as_uuid=True), ForeignKey("PLATFORM.platform_id"), primary_key=True)
-    
-    account_id = Column("id", String(255)) 
-    last_upload = Column(DateTime, nullable=True)
-
-class UserPlatformRequest(BaseModel):
-    platform_name: str
-    account_id: str
-class UserPlatformResponse(BaseModel):
-    status: str
-    message: str
-    platform: str
-    registered_id: str
 
 class AuthUser(Base):
     __tablename__ = "AUTH_USER"
@@ -57,15 +35,26 @@ class UserStat(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     count = Column(Integer, default=0)
 
-class _CategoryCount(BaseModel):
-    category: str
-    count: int
 
-class UserStatResponse(BaseModel):
-    # 서비스 가입 기간
-    duration: int
-    # 카테고리별 게시글 수 순위 (갯수 기준 내림차순)
-    category: List[_CategoryCount]
-    # 게시글 총 수
-    count: int
-    created_at: date
+class UserLevel(Base):
+    __tablename__ = "USER_LEVEL"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id"), primary_key=True)
+    total_count = Column(Integer, default=0)
+    level = Column(String, nullable=True)
+
+class LevelThreshold(Base):
+    __tablename__ = "LEVEL_THRESHOLDS"
+
+    level_name = Column(String, primary_key=True)
+    min_post = Column(Integer, nullable=False)
+
+class Fields(Base):
+    __tablename__ = 'FIELDS'
+    field_id = Column(Integer, primary_key=True, autoincrement=True, default=1)
+    field_name = Column(String(50), unique=True, nullable=False)
+
+class UserField(Base):
+    __tablename__ = 'USER_FIELDS'
+    user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id", ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
+    field_id = Column(Integer, ForeignKey('FIELDS.field_id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)

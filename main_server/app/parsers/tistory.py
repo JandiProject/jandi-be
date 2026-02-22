@@ -1,6 +1,6 @@
 from datetime import datetime
 from app.parsers.base import BaseRSSParser
-from app.models.schemas import ArticleSchema
+from app.schemas.platform_schemas import ArticleSchema
 
 class TistoryRSSParser(BaseRSSParser):
     """티스토리 RSS 파서"""

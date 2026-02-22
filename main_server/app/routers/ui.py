@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
-from app.dependencies.verify_jwt import get_current_user_id, get_jandi_user_id
+from app.core.verify_jwt import get_jandi_user_id
 from app.models.post_models import POST_AGG
-from app.models.jandi_models import GetJandiResponse
-from pydantic import BaseModel
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
-from app.internal.html_template import get_html_template
+from app.templates.html_template import get_html_template
 from datetime import datetime, timedelta
 router = APIRouter(prefix='/jandi')
 

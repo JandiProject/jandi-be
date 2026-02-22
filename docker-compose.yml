@@ -22,15 +22,15 @@ services:
       - "8000:8000"
     env_file:
       - .env
-  frontend:
-    build: ./frontend
-    container_name: jandi-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - main-server
-    env_file:
-      - .env
+  # frontend:
+  #   build: ./frontend
+  #   container_name: jandi-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - main-server
+  #   env_file:
+  #     - .env
 
   post-observer:
     build: ./post_observer

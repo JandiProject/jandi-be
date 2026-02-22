@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends,HTTPException
 from typing import List
 from sqlalchemy.orm import Session 
 from app.dependencies.database import get_db
-from app.dependencies.verify_jwt import get_current_user_id
-from app.models.user_models import UserStat, UserStatResponse, Platform
-from app.models.post_models import Post, Posts
-from datetime import datetime, date
+from app.core.verify_jwt import get_current_user_id
+from app.models.user_models import UserStat
+from app.models.platform_models import Platform
+from app.schemas.analytics_schemas import UserStatResponse
+from app.models.post_models import Posts
+from app.schemas.post_schemas import Post
+from datetime import date
 
 router = APIRouter(prefix='/api/user')
 

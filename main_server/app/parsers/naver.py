@@ -1,6 +1,6 @@
 from datetime import datetime
 from app.parsers.base import BaseRSSParser
-from app.models.schemas import ArticleSchema
+from app.schemas.platform_schemas import ArticleSchema
 
 class NaverRSSParser(BaseRSSParser):
     """네이버 블로그 RSS 파서"""

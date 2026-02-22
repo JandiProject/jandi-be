@@ -6,7 +6,6 @@ import os
 from dotenv import load_dotenv
 from email.message import EmailMessage
 import aiosmtplib
-from typing import Optional
 
 load_dotenv()
 

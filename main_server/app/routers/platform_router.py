@@ -1,19 +1,11 @@
-import jwt
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from typing import Optional
-import os
 import logging
 from app.dependencies.database import get_db
-from app.models.user_models import UserPlatform, Platform, UserPlatformRequest
-from app.models.post_models import Posts
-from app.dependencies.verify_jwt import get_current_user_id
-from app.parsers.velog import VelogRSSParser
-from app.parsers.naver import NaverRSSParser
-from app.parsers.tistory import TistoryRSSParser
-from app.dependencies.rabbitmq import publish_message
-import time
+from app.schemas.platform_schemas import UserPlatformRequest
+from app.core.verify_jwt import get_current_user_id
+from app.services import platform_service
+from app.models.platform_models import Platform
 router = APIRouter(
     prefix="/api/platform",
     tags=["Platform"]
@@ -21,60 +13,28 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
-platform_register_map = {
-    "velog": VelogRSSParser(),
-    "naver": NaverRSSParser(),
-    "tistory": TistoryRSSParser()
-}
 
-@router.put("")
+@router.put("", status_code=status.HTTP_200_OK)
 def register_platform(
     req: UserPlatformRequest,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
     ):
-    platform_info = db.query(Platform).filter(Platform.name == req.platform_name).first()
-    
-    if not platform_info:
-        raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
+    # 플랫폼 정보 조회
+    platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
 
-    existing_mapping = db.query(UserPlatform).filter(
-        UserPlatform.user_id == user_id,
-        UserPlatform.platform_id == platform_info.platform_id
-    ).first()
+    # 유저-플랫폼 매핑 추가 또는 업데이트
+    platform_service.add_user_platform_mapping(db, user_id, platform_info.platform_id, req.account_id)
 
-    # 3. Upsert
-    if existing_mapping:
-        existing_mapping.account_id = req.account_id
-        message = "업데이트 완료"
-    else:
-        new_mapping = UserPlatform(
-            user_id=user_id,
-            platform_id=platform_info.platform_id,
-            account_id=req.account_id,
-            last_upload=None
-        )
-        db.add(new_mapping)
-        message = "등록 완료"
-
-    db.commit()
-
-    articles = platform_register_map[req.platform_name].parse(req.account_id)
+    # 메시지큐에 넣을 데이터 생성 (궁극적으로 이 부분은 없어지는 게 나아보임)
     data = []
-    for article in articles:
-        data.append({
-            "link": article.link,
-            "published_at": article.published_at,
-            "title": article.title,
-            "user_id": user_id,
-            "platform": req.platform_name
-        })
+    platform_service.make_article_data(data, req.platform_name, req.account_id, user_id)
 
-    publish_message("platform_register", data)
+    # TODO: 게시글 데이터를 통째로 MQ로 보내는 것은 비효율적임. 플랫폼 정보만 발행하는 게 나아보임. 그러면 main server에서 rss 파싱을 안해도 됨
+    # 우선 메시지큐 기능 복구될 때까지 주석처리
+    # publish_message("platform_register", data)
 
-    return {
-        "message": message
-    }
+    return
 
 @router.delete("")
 def delete_platform(
@@ -82,49 +42,10 @@ def delete_platform(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
     ):
-    try: 
-        platform_info = db.query(Platform).filter(Platform.name == req.platform_name).first()
-        
-        if not platform_info:
-            raise HTTPException(status_code=404, detail=f"지원하지 않는 플랫폼: {req.platform_name}")
 
-        existing_mapping = db.query(UserPlatform).filter(
-            UserPlatform.user_id == user_id,
-            UserPlatform.platform_id == platform_info.platform_id
-        ).first()
-
-        existing_posts = db.query(Posts).filter(
-            Posts.user_id == user_id,
-            Posts.platform_id == platform_info.platform_id
-        ).all()
-
-        if not existing_mapping:
-            raise HTTPException(status_code=404, detail="플랫폼이 등록되어 있지 않습니다.")
-
-        for post in existing_posts:
-            db.delete(post)
-        db.delete(existing_mapping)
-        # 삭제는 먼저 확정한다. 이후 MV 갱신 실패가 나도 삭제 자체는 성공으로 본다.
-        db.commit()
-
-        try:
-            db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
-            db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
-            db.commit()
-        except Exception:
-            db.rollback()
-            logger.exception(
-                "Materialized view refresh failed after platform delete (user_id=%s, platform=%s)",
-                user_id,
-                req.platform_name,
-            )
-    except HTTPException:
-        db.rollback()
-        raise
-    except Exception:
-        db.rollback()
-        logger.exception("플랫폼 삭제 중 오류 발생")
-        raise HTTPException(status_code=500, detail="플랫폼 삭제 처리 중 서버 오류가 발생했습니다.")
+    platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
+    
+    platform_service.delete_user_platform_mapping(db, user_id, platform_info.platform_id, req.platform_name)
 
     return {
         "message": "삭제 완료"
@@ -135,12 +56,5 @@ def get_platforms(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
     ):
-    user_platforms = db.query(UserPlatform, Platform).filter(UserPlatform.platform_id == Platform.platform_id, UserPlatform.user_id == user_id).all()
-    res = []
-    for user_platform, platform in user_platforms:
-        res.append({
-            "platform_name": platform.name,
-            "account_id": user_platform.account_id,
-            "last_upload": user_platform.last_upload
-        })
+    res: list[dict] = platform_service.get_user_platforms(db, user_id)
     return res

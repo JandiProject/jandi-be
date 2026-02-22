@@ -1,6 +1,6 @@
 from datetime import datetime
 from app.parsers.base import BaseRSSParser
-from app.models.schemas import ArticleSchema
+from app.schemas.platform_schemas import ArticleSchema
 
 class VelogRSSParser(BaseRSSParser):
     """Velog RSS 파서"""

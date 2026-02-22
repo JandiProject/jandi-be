@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import jwt
 import os
 from app.dependencies.database import get_db
-from app.internal.email_service import send_verification_email
+from app.services.email_service import send_verification_email
 from app.models.user_models import User, AuthUser
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
+# TODO: 인증 도메인 비즈니스 로직은 app/services/auth_service.py로 점진 이관
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

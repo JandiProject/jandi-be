@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
-from app.dependencies.verify_jwt import get_current_user_id, get_jandi_user_id
-from app.models.jandi_models import GetJandiResponse
+from app.core.verify_jwt import get_current_user_id, get_jandi_user_id
+from app.schemas.jandi_schemas import GetJandiResponse
 from app.models.post_models import POST_AGG
-from app.internal.html_template import get_html_template
+from app.templates.html_template import get_html_template
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
@@ -20,17 +20,19 @@ UI_SECRET_KEY = os.getenv("UI_SECRET_KEY", "my_super_secret_key")
 ALGORITHM = "HS256"
 
 @router.get("/", response_model=list[GetJandiResponse])
-async def get_jandi(date: str | None = None,db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+async def get_jandi_data(date: str | None = None,db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
     # date가 없으면 오늘 날짜로 설정
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
-    date: datetime = datetime.strptime(date, "%Y-%m-%d")
+    
+    dt = datetime.strptime(date, "%Y-%m-%d")
+    
     # user_id로 POST_AGG 테이블에서 데이터를 가져옴
-    posts: list[POST_AGG] = db.query(POST_AGG).filter(POST_AGG.user_id == user_id, POST_AGG.date.between(date-timedelta(days=30), date)).all()
+    posts: list[POST_AGG] = db.query(POST_AGG).filter(POST_AGG.user_id == user_id, POST_AGG.date.between(dt-timedelta(days=30), dt)).all()
     if len(posts) == 0:
         return []
     # 그걸 [GetJandiResponse]로 변환
-    response = [GetJandiResponse(date=post.date.strftime("%Y-%m-%d"), topic=post.category, count=post.count) for post in posts]
+    response = [GetJandiResponse(date=post.date.strftime("%Y-%m-%d"), topic=post.category, count=post.count) for post in posts] # type: ignore
     return response
 
 class GetSignedUrlRequest(BaseModel):

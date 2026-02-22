@@ -35,7 +35,6 @@ class POST_AGG(Base):
     )
     count = Column(Integer, nullable=False)
 
-
 class POST_KEYWORD(Base):
     __tablename__ = "POST_KEYWORDS"
 

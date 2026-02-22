@@ -35,13 +35,13 @@ class UserStat(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     count = Column(Integer, default=0)
 
-# view라서 일단 주석처리
-# class UserLevel(Base):
-#     __tablename__ = "USER_LEVEL"
 
-#     user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id"), primary_key=True)
-#     total_count = Column(Integer, default=0)
-#     level = Column(String, nullable=True)
+class UserLevel(Base):
+    __tablename__ = "USER_LEVEL"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("USER.user_id"), primary_key=True)
+    total_count = Column(Integer, default=0)
+    level = Column(String, nullable=True)
 
 class LevelThreshold(Base):
     __tablename__ = "LEVEL_THRESHOLDS"

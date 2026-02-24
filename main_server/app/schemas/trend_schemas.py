@@ -6,8 +6,7 @@ class TrendBaseSchema(BaseModel):
 
 class KeywordData(BaseModel):
     keyword: str
-    values: list[int]
+    frequency: int
 
 class GetTrendingKeywordsResponse(BaseModel):
-    timeline: list[str]
     data: list[KeywordData]

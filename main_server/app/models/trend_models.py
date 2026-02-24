@@ -30,3 +30,22 @@ class PostKeywordMapping(Base):
     __tablename__ = 'EXTERNAL_POSTS_KEYWORDS'
     keyword_id = Column(Integer, ForeignKey('KEYWORDS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
     post_id = Column(String(64), ForeignKey('EXTERNAL_POSTS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
+
+# MATERIALIZED VIEW
+class TrendingKeywordView(Base):
+    __tablename__ = 'TRENDING_KEYWORDS_VIEW'
+    keyword_id = Column(Integer, primary_key=True, nullable=False)
+    keyword = Column(String(100), nullable=False)
+    count = Column(Integer, nullable=False)
+    field_id = Column(Integer, nullable=False)
+
+class ArticlesMentioningKeywordsView(Base):
+    __tablename__ = 'ARTICLES_MENTIONING_KEYWORDS_VIEW'
+    id = Column(String(64), primary_key=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    url = Column(Text, nullable=False)
+    source = Column(String(100), nullable=False)
+    summary = Column(Text, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=False)
+    keyword = Column(String(100), nullable=False)
+    field_id = Column(Integer, nullable=False)

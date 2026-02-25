@@ -7,5 +7,5 @@ class JandiBaseSchema(BaseModel):
 
 class GetJandiResponse(BaseModel):
     date: str
-    topic: str
+    category: str
     count: int

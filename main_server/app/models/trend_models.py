@@ -49,3 +49,9 @@ class ArticlesMentioningKeywordsView(Base):
     published_at = Column(DateTime(timezone=True), nullable=False)
     keyword = Column(String(100), nullable=False)
     field_id = Column(Integer, nullable=False)
+
+class UsersMentioningKeywordsView(Base):
+    __tablename__ = 'USERS_MENTIONING_KEYWORDS_VIEW'
+    user_id = Column(String(64), primary_key=True, nullable=False)
+    count = Column(Integer, nullable=False)
+    name = Column(String(100), nullable=False)

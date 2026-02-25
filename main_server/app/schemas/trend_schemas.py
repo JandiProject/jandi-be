@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.jandi_schemas import GetJandiResponse
+
 
 class TrendBaseSchema(BaseModel):
     pass
@@ -22,3 +24,7 @@ class ArticleMentioningKeyword(BaseModel):
 class GetArticlesMentioningKeywordResponse(BaseModel):
     keyword: str
     articles: list[ArticleMentioningKeyword]
+
+class GetUsersMentioningKeywordResponse(BaseModel):
+    name: str
+    jandi_data: list[GetJandiResponse]

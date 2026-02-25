@@ -6,6 +6,18 @@ from collections import defaultdict
 import base64
 
 def get_trending_keywords(db: Session, field: Fields) -> GetTrendingKeywordsResponse:
+    """트렌드 키워드 반환
+
+    Args:
+        db (Session): db 세션
+        field (Fields): 분야
+
+    Raises:
+        e: _description_
+
+    Returns:
+        GetTrendingKeywordsResponse: 트렌드 키워드 반환
+    """
     try:
         trend_repository = TrendRepository(db)
         trending_keywords = trend_repository.get_trending_keywords_by_field_id(field.field_id)
@@ -14,12 +26,33 @@ def get_trending_keywords(db: Session, field: Fields) -> GetTrendingKeywordsResp
     except Exception as e:
         raise e
 
-def get_field_matching(db: Session, field: str) -> Fields:
+def get_field_matching(db: Session, field: str) -> Fields| None:
+    """ field 이름에 맞는 Field 객체 반환
+
+    Args:
+        db (Session): db 세션
+        field (str): 필드 이름
+
+    Returns:
+        Fields | None: field가 존재하면 Fields 객체를, 존재하지 않으면 None 반환
+    """
     trend_repository = TrendRepository(db)
     fields = trend_repository.get_field_by_name(field)
     return fields
 
 def get_articles_mentioning_keyword(db: Session,field: Fields) -> list[GetArticlesMentioningKeywordResponse]:
+    """해당 분야의 키워드를 언급한 기사 반환
+
+    Args:
+        db (Session): db 세션
+        field (Fields): 분야
+
+    Raises:
+        e: 
+
+    Returns:
+        list[GetArticlesMentioningKeywordResponse]: 해당 분야의 키워드를 언급한 기사 목록
+    """
     try:
         trend_repository = TrendRepository(db)
         articles = trend_repository.get_articles_mentioning_keywords_by_field_id(field.field_id)

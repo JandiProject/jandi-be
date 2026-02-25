@@ -18,6 +18,7 @@ class Posts(Base):
         nullable=False,
         primary_key=True,
     )
+    field_id = Column(Integer, ForeignKey("FIELDS.field_id"), nullable=False)  # 필드 ID 추가
     date = Column(DateTime, nullable=False)
     category = Column(String, nullable=False)
     title = Column(String, nullable=False)

@@ -64,6 +64,7 @@ def get_articles_mentioning_keyword_router(
 
 @router.get("/author", status_code=status.HTTP_200_OK, response_model=list[GetUsersMentioningKeywordResponse])
 def get_users_mentioning_keyword_router(
+    field: str|None = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -72,8 +73,16 @@ def get_users_mentioning_keyword_router(
     :param db: 데이터베이스 세션
     :type db: Session
     """
+    if field is None:
+        raise HTTPException(status_code=400, detail="field query parameter is required")
+    
+    # field가 존재하는지 검증
+    field_obj = trend_service.get_field_matching(db, field)
+    if not field_obj:
+        raise HTTPException(status_code=400, detail="Invalid field")
+
     res = []
-    users = trend_service.get_users_mentioning_keyword(db)
+    users = trend_service.get_users_mentioning_keyword(db, int(field_obj.field_id)) # type: ignore
     for user in users:
         res.append(GetUsersMentioningKeywordResponse(name=user[1], jandi_data=jandi_service.get_jandi_data(db, user[0]))) # type: ignore
 

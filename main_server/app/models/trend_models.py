@@ -55,3 +55,4 @@ class UsersMentioningKeywordsView(Base):
     user_id = Column(String(64), primary_key=True, nullable=False)
     count = Column(Integer, nullable=False)
     name = Column(String(100), nullable=False)
+    field_id = Column(Integer, nullable=False)

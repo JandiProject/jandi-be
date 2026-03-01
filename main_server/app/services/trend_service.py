@@ -13,18 +13,16 @@ def get_trending_keywords(db: Session, field: Fields) -> GetTrendingKeywordsResp
         field (Fields): 분야
 
     Raises:
-        e: _description_
+        e: 
 
     Returns:
         GetTrendingKeywordsResponse: 트렌드 키워드 반환
     """
-    try:
-        trend_repository = TrendRepository(db)
-        trending_keywords = trend_repository.get_trending_keywords_by_field_id(field.field_id)
-        result = GetTrendingKeywordsResponse(data=[KeywordData(keyword=str(kw.keyword), frequency= kw.count) for kw in trending_keywords]) # pyright: ignore[reportArgumentType]
-        return result
-    except Exception as e:
-        raise e
+    trend_repository = TrendRepository(db)
+    trending_keywords = trend_repository.get_trending_keywords_by_field_id(field.field_id)
+    result = GetTrendingKeywordsResponse(data=[KeywordData(keyword=str(kw.keyword), frequency= kw.count) for kw in trending_keywords]) # pyright: ignore[reportArgumentType]
+    return result
+
 
 def get_field_matching(db: Session, field: str) -> Fields| None:
     """ field 이름에 맞는 Field 객체 반환
@@ -53,45 +51,48 @@ def get_articles_mentioning_keyword(db: Session,field: Fields) -> list[GetArticl
     Returns:
         list[GetArticlesMentioningKeywordResponse]: 해당 분야의 키워드를 언급한 기사 목록
     """
-    try:
-        trend_repository = TrendRepository(db)
-        articles = trend_repository.get_articles_mentioning_keywords_by_field_id(field.field_id)
-        result = []
-        mapping = defaultdict(list)
-        for article in articles:
-            mapping[article.keyword].append(ArticleMentioningKeyword(
-                id=article.id, # type: ignore
-                title=article.title, # type: ignore
-                url=article.url, # type: ignore
-                source= base64.b64decode(article.source).decode() if article.source else None, # type: ignore
-                summary=article.summary, # type: ignore
-                published_at=article.published_at.isoformat()
-            ))
-        for keyword, articles in mapping.items():
-            result.append(GetArticlesMentioningKeywordResponse(keyword=keyword, articles=articles)) # pyright: ignore[reportArgumentType]
-        return result
-    except Exception as e:
-        raise e
+
+    trend_repository = TrendRepository(db)
+    articles = trend_repository.get_articles_mentioning_keywords_by_field_id(field.field_id)
+    result = []
+    mapping = defaultdict(list)
+    
+    for article in articles:
+        try:
+            article.source = base64.b64decode(article.source).decode() if article.source else "" # pyright: ignore
+        except:
+            article.source = "" # pyright: ignore
+
+        mapping[article.keyword].append(ArticleMentioningKeyword(
+            id=article.id, # type: ignore
+            title=article.title, # type: ignore
+            url=article.url, # type: ignore
+            source= article.source, # type: ignore
+            summary=article.summary, # type: ignore
+            published_at=article.published_at.isoformat()
+        ))
+    for keyword, article_list in mapping.items():
+        result.append(GetArticlesMentioningKeywordResponse(keyword=keyword, articles=article_list)) # pyright: ignore[reportArgumentType]
+    return result
     
 def get_users_mentioning_keyword(db: Session, field_id: int) -> list[tuple[str, str]]:
     """트렌딩 키워드를 많이 언급한 유저 (id, name) 목록 출력
 
     Args:
-        db (Session): _description_
+        db (Session): db 세션
 
     Raises:
-        e: _description_
+        e: 
 
     Returns:
-        list[tuple[str, str]]: _description_
+        list[tuple[str, str]]: 유저의 id, name 튜플 리스트
     """
-    try:
-        trend_repository = TrendRepository(db)
-        articles = trend_repository.get_top_users_mentioning_keywords(limit=3, field_id=field_id)
-        names = set()
-        for article in articles:
-            names.add((article.user_id, article.name)) # type: ignore
-        return list(names)
-    except Exception as e:
-        raise e
+
+    trend_repository = TrendRepository(db)
+    users = trend_repository.get_top_users_mentioning_keywords(limit=3, field_id=field_id)
+    names = set()
+    for user in users:
+        names.add((user.user_id, user.name)) # type: ignore
+    return list(names)
+
  

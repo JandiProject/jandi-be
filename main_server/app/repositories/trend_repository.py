@@ -55,7 +55,7 @@ class TrendRepository:
         """트렌드 키워드를 많이 언급한 유저 (id, name) 목록 출력
 
         Args:
-            limit (int, optional): _description_. Defaults to 3.
+            limit (int, optional): 조회할 상위 유저 수. Defaults to 3.
             field_id (int, optional): 필드 ID. Defaults to 1.
 
         Returns:

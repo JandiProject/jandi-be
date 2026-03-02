@@ -90,9 +90,10 @@ def get_users_mentioning_keyword(db: Session, field_id: int) -> list[tuple[str, 
 
     trend_repository = TrendRepository(db)
     users = trend_repository.get_top_users_mentioning_keywords(limit=3, field_id=field_id)
-    names = set()
+    names = []
     for user in users:
-        names.add((user.user_id, user.name)) # type: ignore
+        names.append((user.user_id, user.name))
+    names = list(dict.fromkeys(names)) # type: ignore
     return list(names)
 
  

@@ -88,7 +88,7 @@ def init_view():
             SELECT map.keyword_id, k.keyword, count(post_id) AS count, p.field_id
             FROM "EXTERNAL_POSTS" AS p, "EXTERNAL_POSTS_KEYWORDS" AS map, "KEYWORDS" AS k
             WHERE p.id = map.post_id AND map.keyword_id = k.id 
-            AND p.published_at >= DATE_TRUNC('weeks', CURRENT_DATE) - INTERVAL '3 weeks' 
+            AND p.published_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '3 weeks' 
             GROUP BY map.keyword_id, k.keyword, p.field_id
             HAVING count(p.id) >= 2
             ORDER BY count DESC;
@@ -101,7 +101,7 @@ def init_view():
             FROM "EXTERNAL_POSTS" AS p, "EXTERNAL_POSTS_KEYWORDS" AS map, "KEYWORDS" AS k
             WHERE p.id = map.post_id AND map.keyword_id = k.id 
             AND map.keyword_id IN (SELECT keyword_id FROM "TRENDING_KEYWORDS_VIEW")
-            AND p.published_at >= DATE_TRUNC('weeks', CURRENT_DATE) - INTERVAL '3 weeks' 
+            AND p.published_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '3 weeks' 
             ORDER BY p.id;
         """))
         

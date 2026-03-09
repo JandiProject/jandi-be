@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Uuid
 from sqlalchemy.sql import func
 from app.dependencies.database import Base, ViewBase
 
@@ -12,7 +12,7 @@ class Keyword(Base):
 
 class ExternalPost(Base):
     __tablename__ = 'EXTERNAL_POSTS'
-    id = Column(String(64), primary_key=True) # URL 해시값
+    id = Column(Uuid(as_uuid=True), primary_key=True) # URL 해시값
     source = Column(String(50))               # 기업명
     title = Column(String(255))               # 글 제목
     url = Column(Text)
@@ -29,7 +29,7 @@ class ExternalPost(Base):
 class PostKeywordMapping(Base):
     __tablename__ = 'EXTERNAL_POSTS_KEYWORDS'
     keyword_id = Column(Integer, ForeignKey('KEYWORDS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
-    post_id = Column(String(64), ForeignKey('EXTERNAL_POSTS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
+    post_id = Column(Uuid(as_uuid=True), ForeignKey('EXTERNAL_POSTS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
 
 # MATERIALIZED VIEW
 class TrendingKeywordView(ViewBase):
@@ -45,7 +45,7 @@ class ArticlesMentioningKeywordsView(ViewBase):
     __tablename__ = 'ARTICLES_MENTIONING_KEYWORDS_VIEW'
     __table_args__ = {'info': {'is_view': True}}
     
-    id = Column(String(64), primary_key=True, nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, nullable=False)
     title = Column(String(255), nullable=False)
     url = Column(Text, nullable=False)
     source = Column(String(100), nullable=False)
@@ -58,7 +58,7 @@ class UsersMentioningKeywordsView(ViewBase):
     __tablename__ = 'USERS_MENTIONING_KEYWORDS_VIEW'
     __table_args__ = {'info': {'is_view': True}}
     
-    user_id = Column(String(64), primary_key=True, nullable=False)
+    user_id = Column(Uuid(as_uuid=True), primary_key=True, nullable=False)
     count = Column(Integer, nullable=False)
     name = Column(String(100), nullable=False)
     field_id = Column(Integer, nullable=False)

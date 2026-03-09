@@ -59,15 +59,15 @@ def get_articles_mentioning_keyword(db: Session,field: Fields) -> list[GetArticl
     
     for article in articles:
         try:
-            article.source = base64.b64decode(article.source).decode() if article.source else "" # pyright: ignore
-        except:
-            article.source = "" # pyright: ignore
+            source = base64.b64decode(article.source).decode() if article.source else "" # pyright: ignore
+        except Exception:
+            source = ""
 
         mapping[article.keyword].append(ArticleMentioningKeyword(
             id=article.id, # type: ignore
             title=article.title, # type: ignore
             url=article.url, # type: ignore
-            source= article.source, # type: ignore
+            source=source, # type: ignore
             summary=article.summary, # type: ignore
             published_at=article.published_at.isoformat()
         ))

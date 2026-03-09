@@ -2,6 +2,20 @@ version: '3.8'
 
 services:
 
+  db:
+      image: postgres:17
+      container_name: jandi-postgres
+      ports:
+        - "5432:5432"
+      restart: always  
+      #배포 시 Cloud SQL 연결 설정  
+      environment:
+        - POSTGRES_USER=jandi_user
+        - POSTGRES_PASSWORD=jandi_password
+        - POSTGRES_DB=jandi_db
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+
   # rabbitmq:
   #   image: rabbitmq:4.2.1-management # 배포시에 용량 크면 일반 버전으로 바꿔도 될듯  
   #   container_name: jandi-rabbitmq
@@ -57,4 +71,5 @@ services:
 
 # 데이터 영구 저장을 위한 볼륨 정의
 volumes:
+  postgres_data:
   rabbitmq_data:

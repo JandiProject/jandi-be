@@ -61,4 +61,10 @@ class TrendRepository:
         Returns:
             list[UsersMentioningKeywordsView]: 트렌드 키워드를 많이 언급한 유저 목록
         """
-        return self.db.query(UsersMentioningKeywordsView).filter(UsersMentioningKeywordsView.field_id == field_id).limit(limit).all()
+        return (
+            self.db.query(UsersMentioningKeywordsView)
+            .filter(UsersMentioningKeywordsView.field_id == field_id)
+            .order_by(UsersMentioningKeywordsView.count.desc())
+            .limit(limit)
+            .all()
+        )

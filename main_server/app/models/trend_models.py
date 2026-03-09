@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.sql import func
-from app.dependencies.database import Base
+from app.dependencies.database import Base, ViewBase
 
 class Keyword(Base):
     __tablename__ = 'KEYWORDS'
@@ -32,15 +32,19 @@ class PostKeywordMapping(Base):
     post_id = Column(String(64), ForeignKey('EXTERNAL_POSTS.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
 
 # MATERIALIZED VIEW
-class TrendingKeywordView(Base):
+class TrendingKeywordView(ViewBase):
     __tablename__ = 'TRENDING_KEYWORDS_VIEW'
+    __table_args__ = {'info': {'is_view': True}}
+    
     keyword_id = Column(Integer, primary_key=True, nullable=False)
     keyword = Column(String(100), nullable=False)
     count = Column(Integer, nullable=False)
     field_id = Column(Integer, nullable=False)
 
-class ArticlesMentioningKeywordsView(Base):
+class ArticlesMentioningKeywordsView(ViewBase):
     __tablename__ = 'ARTICLES_MENTIONING_KEYWORDS_VIEW'
+    __table_args__ = {'info': {'is_view': True}}
+    
     id = Column(String(64), primary_key=True, nullable=False)
     title = Column(String(255), nullable=False)
     url = Column(Text, nullable=False)
@@ -50,8 +54,10 @@ class ArticlesMentioningKeywordsView(Base):
     keyword = Column(String(100), nullable=False)
     field_id = Column(Integer, nullable=False)
 
-class UsersMentioningKeywordsView(Base):
+class UsersMentioningKeywordsView(ViewBase):
     __tablename__ = 'USERS_MENTIONING_KEYWORDS_VIEW'
+    __table_args__ = {'info': {'is_view': True}}
+    
     user_id = Column(String(64), primary_key=True, nullable=False)
     count = Column(Integer, nullable=False)
     name = Column(String(100), nullable=False)

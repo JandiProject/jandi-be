@@ -42,7 +42,7 @@ def init_fields():
                     INSERT INTO "FIELDS" (field_id, field_name) VALUES
                     (1, 'Tech'),
                     (2, 'AI/Data'),
-                    (3, 'Bio'),
+                    (3, 'Industry'),
                     (4, 'Daily'),
                     (5, 'Humanities'),
                     (6, 'Social');

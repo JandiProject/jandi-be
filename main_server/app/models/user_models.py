@@ -13,6 +13,7 @@ class User(Base):
     color_theme = Column(JSON, nullable=True)
     is_public = Column(Boolean, default=False)
     notify_email = Column(Boolean, default=False)
+    widget_id = Column(UUID(as_uuid=True), nullable=True)
     
 
 class AuthUser(Base):

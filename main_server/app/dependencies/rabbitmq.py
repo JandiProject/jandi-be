@@ -5,12 +5,15 @@ RabbitMQ 연결 및 메시지 발행
 
 import os
 import ssl
-import pika
-import json
 import logging
-from typing import Dict, Any
+
+import pika
+from pydantic import BaseModel
+
+from app.schemas.rabbitmq_schemas import QueueName
 
 logger = logging.getLogger(__name__)
+
 
 def get_rabbitmq_connection():
     """
@@ -40,13 +43,14 @@ def get_rabbitmq_connection():
         logger.error(f"Failed to connect to RabbitMQ: {e}")
         raise
 
-def publish_message(queue_name: str, message: list[Dict[str, Any]]):
+
+def publish_message(queue_name: QueueName, message: BaseModel):
     """
     RabbitMQ 큐에 메시지 발행
 
     Args:
         queue_name: 큐 이름
-        message: 발행할 메시지 (dict)
+        message: 발행할 메시지 (Pydantic model)
     """
     connection = None
     try:
@@ -55,16 +59,16 @@ def publish_message(queue_name: str, message: list[Dict[str, Any]]):
         channel = connection.channel()
 
         # 큐 선언 (존재하지 않으면 생성)
-        channel.queue_declare(queue=queue_name, durable=False)
+        channel.queue_declare(queue=queue_name.value, durable=False)
 
         # 메시지 발행
         channel.basic_publish(
-            exchange='',
-            routing_key=queue_name,
-            body=json.dumps(message, ensure_ascii=False),
+            exchange="",
+            routing_key=queue_name.value,
+            body=message.model_dump_json(),
             properties=pika.BasicProperties(
                 delivery_mode=2,  # 메시지 영구 저장
-            )
+            ),
         )
 
         # logger.info(f"Published message to queue '{queue_name}': {message.get('article', {}).get('title', 'N/A')}")

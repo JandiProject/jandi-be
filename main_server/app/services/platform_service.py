@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy import Column, text
+from sqlalchemy import Column
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.platform_models import Platform, UserPlatform
@@ -84,7 +84,6 @@ def add_user_platform_mapping(
 #     return PlatformRegisterMessage(message_items)
 
 
-
 def delete_user_platform_mapping(
     db: Session, user_id: str, platform_id: Column, platform_name: str
 ):
@@ -112,11 +111,8 @@ def delete_user_platform_mapping(
         platform_repository.delete_user_platform_mapping(existing_mapping)
         # 삭제는 먼저 확정한다. 이후 Materialized View 갱신 실패가 나도 삭제 자체는 성공으로 본다.
         db.commit()
-
         try:
-            db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
-            db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
-            db.commit()
+            platform_repository.refresh_materialized_view()
         except Exception:
             db.rollback()
             logger.exception(

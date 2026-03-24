@@ -91,5 +91,5 @@ class PlatformRepository:
     def refresh_materialized_view(self):
         self.db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
         self.db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
-        self.db.commit()
+            
             

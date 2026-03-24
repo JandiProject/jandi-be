@@ -113,6 +113,7 @@ def delete_user_platform_mapping(
         db.commit()
         try:
             platform_repository.refresh_materialized_view()
+            db.commit()
         except Exception:
             db.rollback()
             logger.exception(

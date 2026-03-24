@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.schemas.platform_schemas import Platforms
+
 
 class QueueName(str, Enum):
     PLATFORM_REGISTER = "platform_register"
@@ -18,6 +20,6 @@ class PlatformRegisterArticleMessage(BaseModel):
 
 # 궁극적으로 이 메시지 사용 예정 (얘는 그냥 유저, 플랫폼, 계정 id 정보만 담은 메시지)
 class PlatformRegisterMessage(BaseModel):
-    platform_name: Literal["tistory", "naver", "velog"]
+    platform_name: Platforms
     account_id: str
     user_id: str

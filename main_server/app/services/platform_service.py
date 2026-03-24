@@ -32,7 +32,7 @@ def add_user_platform_mapping(
     """
     # 이미 매핑이 존재하는지 확인
     platform_repository = PlatformRepository(db)
-    existing_mapping: UserPlatform = platform_repository.get_user_platform_mapping(
+    existing_mapping: UserPlatform|None = platform_repository.get_user_platform_mapping(
         user_id, platform_id
     )
 

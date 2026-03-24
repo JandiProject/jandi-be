@@ -3,13 +3,6 @@ from sqlalchemy import Column
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.platform_models import Platform, UserPlatform
-from app.schemas.rabbitmq_schemas import (
-    PlatformRegisterArticleMessage,
-    PlatformRegisterMessage,
-)
-from app.parsers.naver import NaverRSSParser
-from app.parsers.tistory import TistoryRSSParser
-from app.parsers.velog import VelogRSSParser
 from app.repositories.platform_repository import PlatformRepository
 
 logger = logging.getLogger(__name__)

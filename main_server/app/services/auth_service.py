@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 import os
 from fastapi import HTTPException
@@ -55,7 +55,7 @@ class AuthService:
         #AuthUser 생성 및 저장
         shadow = AuthUser(
             user_id = new_user.user_id,
-            emial = data.email,
+            email = data.email,
             hashed_password = hashed_pw,
             is_verified=False,
             verification_token=verify_token
@@ -84,7 +84,7 @@ class AuthService:
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code = 400, detail="토큰이 만료되었습니다")
         except jwt.InvalidTokenError:
-            raise HTTPException(status_code=40, detail="유효하지 않은 토큰입니다")
+            raise HTTPException(status_code=400, detail="유효하지 않은 토큰입니다")
         
         shadow = self.repository.get_auth_user_by_id(user_id)
         if not shadow or shadow.verification_token != token:

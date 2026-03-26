@@ -1,4 +1,4 @@
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from app.models.post_models import Posts
 from app.models.platform_models import Platform, UserPlatform
 from sqlalchemy.orm import Session
@@ -87,5 +87,9 @@ class PlatformRepository:
             UserPlatform.platform_id == Platform.platform_id,
             UserPlatform.user_id == user_id,
         ).all()
-
-
+    
+    def refresh_materialized_view(self):
+        self.db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
+        self.db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
+            
+            

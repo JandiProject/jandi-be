@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 from app.schemas.auth_schemas import SignUpRequest, SignInRequest, SignInResponse
+from app.services.email_service import send_verification_email
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -112,7 +113,7 @@ class AuthService:
         '#TODO: 이메일 존재 여부와 비밀번호 일치 여부를 나타내는 대신 이메일과 비밀번호가 일치하지 않는다 정도로 보여주는 건 어떨까요?  '
         if not user:
             raise HTTPException(status_code=400, detail="존재하지 않는 이메일입니다")
-        shadow = self.repository.get_auth_user_by_id(user, user_id)
+        shadow = self.repository.get_auth_user_by_id(user.user_id)
         if not shadow or not pwd_context.verify(data.password, shadow.hashed_password):
             raise HTTPException(status_code=400, detail="비밀번호가 일치")
         
@@ -121,7 +122,7 @@ class AuthService:
             self.repository.commit()
 
         token = jwt.encode(
-            {"sub": str(user.user_id), "exp": datetime.utcnow() + timedelta(days=7)},
+            {"sub": str(user.user_id), "exp":datetime.now(datetime.timezone.utc) + timedelta(days=7)},
             SECRET_KEY, algorithm=ALGORITHM
         )
         return {"access_token": token}

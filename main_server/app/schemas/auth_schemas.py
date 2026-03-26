@@ -1,21 +1,26 @@
+# Pydantic Models : 값을 쿼리가 아닌 json으로 넘겨주기 위해
+
 import re
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class AuthBaseSchema(BaseModel):
     pass
 
 
-class SignInRequest(BaseModel):
+class SignUpRequest(BaseModel):
     """
-    Request model for signing in.
-    Note: Passwords should be transmitted over HTTPS only.
+    회원가입 요청 모델
+    (Note: Passwords should be transmitted over HTTPS only.)
     """
 
     email: EmailStr
     password: str
+    name : str
 
-    @validator("password")
+
+    @field_validator("password") 
+    @classmethod
     def password_strength(cls, value):
         # Minimum 8 characters, at least one uppercase, one lowercase, one digit, one special character
         if len(value) < 8:
@@ -32,4 +37,17 @@ class SignInRequest(BaseModel):
 
 
 class SignInResponse(BaseModel):
+    """
+    로그인 응답 모델
+    """
     access_token: str
+
+
+
+
+class SignInRequest(BaseModel):
+    """
+    로그인 요청 모델
+    """
+    email: EmailStr
+    password: str

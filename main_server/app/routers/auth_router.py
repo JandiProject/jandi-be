@@ -57,7 +57,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     service = AuthService(repo)
     return service.verify_email(token)
 
-@router.post("/signin")
+@router.post("/signin", response_model=SignInResponse)
 def signin(data: SignInRequest, db: Session = Depends(get_db)):
 
     """

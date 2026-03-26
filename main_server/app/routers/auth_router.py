@@ -12,148 +12,68 @@ from app.models.user_models import User, AuthUser
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
-
-load_dotenv()
+from app.schemas.auth_schemas import SignUpRequest, SignInRequest, SignInResponse
+from app.repositories.auth_repository import AuthRepository
+from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-# TODO: 인증 도메인 비즈니스 로직은 app/services/auth_service.py로 점진 이관
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-SECRET_KEY = os.getenv("JWT_SECRET")
-ALGORITHM = "HS256"
-
-
-
-# Pydantic Models : 값을 쿼리가 아닌 json으로 넘겨주기 위해
-
-class SignUpRequest(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-
-class SignInRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-# JWT 생성
-
-def create_access_token(user_id: str):
-    payload = {
-        "sub": user_id,
-        "exp": datetime.utcnow() + timedelta(hours=24),
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
-# 회원가입
 
 @router.post("/signup")
 async def signup(data: SignUpRequest, db: Session = Depends(get_db)):
-    # 이메일 중복 검사
-    user = db.query(User).filter(User.email == data.email).first()
-    if user:
-        raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다")
 
-    # User 생성
-    new_user = User(email=data.email, name=data.name)
-    db.add(new_user)
-    db.flush()  # user_id 생성됨
+    """
+    회원가입 API 엔드포인트
 
-    # 비밀번호 해시
-    hashed_pw = pwd_context.hash(data.password)
+    :param data: JSON 요청 바디 데이터
+    :type data: SignUpRequest
+    :param db: DB 세션 주입
+    :type db: Session
+    :return: 회원가입 처리 결과
+    :rtype: dict
+    """
 
-    # 인증용 토큰
-    verify_token = jwt.encode(
-        {"sub": str(new_user.user_id), "exp": datetime.utcnow() + timedelta(hours=1)},
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-    # AuthUser 생성
-    shadow = AuthUser(
-        user_id=new_user.user_id,
-        email=data.email,
-        hashed_password=hashed_pw,
-        is_verified=False,
-        verification_token=verify_token
-    )
-
-    db.add(shadow)
-    db.commit()
-
-    # 이메일 인증 발송
-    await send_verification_email(data.email, verify_token)
-
-    return {"message": "회원가입 완료! 이메일을 확인해주세요."}
-
-
-# 이메일 인증 API
+    repo = AuthRepository(db)
+    service = AuthService(repo)
+    return await service.register_new_user(data)
 
 @router.get("/verify-email")
 def verify_email(token: str, db: Session = Depends(get_db)):
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload["sub"]
-    except(jwt.exceptions.ExpiredSignatureError):
-        raise HTTPException(status_code=400, detail="토큰이 만료되었습니다")
-    except(jwt.exceptions.InvalidTokenError):
-        raise HTTPException(status_code=400, detail="유효하지 않은 토큰입니다")
+    """
+    이메일 인증 토큰을 검증하여 계정을 활성화.
 
-    shadow = db.query(AuthUser).filter(AuthUser.user_id == user_id).first()
+    사용자가 메일로 받은 링크를 클릭했을 때 호출되며, 토큰이 유효하면 
+    AuthUser의 인증 상태를 완료로 변경하고 통계 뷰를 갱신.
 
-    if not shadow:
-        raise HTTPException(status_code=400, detail="인증 정보가 없습니다")
+    :param token: 이메일에 포함된 JWT 인증 토큰
+    :type token: str
+    :param db: 데이터베이스 세션 (Depends를 통해 주입)
+    :type db: Session
+    :return: 인증 완료 메시지
+    :rtype: dict
+    """
 
-    if shadow.verification_token != token:
-        raise HTTPException(status_code=400, detail="토큰이 일치하지 않습니다")
-
-    shadow.is_verified = True
-    shadow.verification_token = None
-    db.commit()
-    db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
-    db.commit()
-
-    return {"message": "이메일 인증 완료!"}
-
-
-# 로그인
+    repo = AuthRepository(db)
+    service = AuthService(repo)
+    return service.verify_email(token)
 
 @router.post("/signin")
 def signin(data: SignInRequest, db: Session = Depends(get_db)):
 
-    # 이메일 일치 유저 찾기
-    user = db.query(User).filter(User.email == data.email).first()
-    if not user:
-        raise HTTPException(status_code=400, detail="존재하지 않는 이메일입니다")
+    """
+    사용자 로그인을 처리하고 액세스 토큰을 발급.
 
-    # AuthUser 찾기
-    shadow = db.query(AuthUser).filter(AuthUser.user_id == user.user_id).first()
-    if not shadow:
-        raise HTTPException(status_code=400, detail="인증 정보 없음")
+    이메일과 비밀번호를 검증하고, 모든 조건(계정 존재, 비밀번호 일치, 이메일 인증 완료)이 
+    충족되면 향후 API 요청에 사용할 JWT 액세스 토큰을 반환.
 
-    # 비밀번호 검증
-    if not pwd_context.verify(data.password, shadow.hashed_password):
-        raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않습니다")
+    :param data: 로그인 요청 정보 (이메일, 비밀번호)
+    :type data: SignInRequest
+    :param db: 데이터베이스 세션 (Depends를 통해 주입)
+    :type db: Session
+    :return: 발급된 액세스 토큰 정보
+    :rtype: dict
+    """
 
-    # 이메일 인증 체크
-    if not shadow.is_verified:
-        raise HTTPException(status_code=400, detail="이메일 인증이 필요합니다")
-    
-    #로그인 성공 시 user테이블의 email에 값 추가
-    if user.email != shadow.email:
-        user.email = shadow.email
-        db.commit()
-
-    # JWT 토큰 발급
-    token = jwt.encode(
-        {"sub": str(user.user_id), "exp": datetime.utcnow() + timedelta(days=7)},
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-    return {"access_token": token}
-
+    repo = AuthRepository(db)
+    service = AuthService(repo)
+    return service.sign_in(data)

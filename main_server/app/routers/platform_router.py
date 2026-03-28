@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 import logging
 from app.dependencies.database import get_db
+from app.dependencies.post_observer import notify_platform_registered
 from app.schemas.platform_schemas import UserPlatformRequest
 from app.core.verify_jwt import get_current_user_id
 from app.services import platform_service
 from app.models.platform_models import Platform
+
 router = APIRouter(
     prefix="/api/platform",
     tags=["Platform"]
@@ -18,21 +20,20 @@ logger = logging.getLogger(__name__)
 def register_platform(
     req: UserPlatformRequest,
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
-    ):
+    user_id: str = Depends(get_current_user_id),
+):
     # 플랫폼 정보 조회
     platform_info: Platform = platform_service.get_platform_info(db, req.platform_name)
 
     # 유저-플랫폼 매핑 추가 또는 업데이트
     platform_service.add_user_platform_mapping(db, user_id, platform_info.platform_id, req.account_id)
 
-    # 메시지큐에 넣을 데이터 생성 (궁극적으로 이 부분은 없어지는 게 나아보임)
-    data = []
-    platform_service.make_article_data(data, req.platform_name, req.account_id, user_id)
-
-    # TODO: 게시글 데이터를 통째로 MQ로 보내는 것은 비효율적임. 플랫폼 정보만 발행하는 게 나아보임. 그러면 main server에서 rss 파싱을 안해도 됨
-    # 우선 메시지큐 기능 복구될 때까지 주석처리
-    # publish_message("platform_register", data)
+    # post_observer에 글 수집 요청
+    notify_platform_registered(
+        user_id=user_id,
+        platform_name=req.platform_name,
+        account_id=req.account_id,
+    )
 
     return
 

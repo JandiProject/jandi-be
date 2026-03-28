@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def check_new_posts():
+def check_new_posts() -> int:
     """
     메인 비즈니스 로직: 모든 사용자-플랫폼에 대해 새 글 확인
 
@@ -15,6 +15,8 @@ def check_new_posts():
     3. 마지막 업로드 시각과 비교하여 새 글 필터링
     4. 새 글이 있으면 로그 출력 # RabbitMQ 발행 구현 해야함
     5. last_upload 업데이트
+
+    :return: 수집된 새 글 수.
     """
     logger.info("=== Starting new posts check ===")
 
@@ -23,7 +25,7 @@ def check_new_posts():
 
     if not user_platforms:
         logger.info("No user platforms found")
-        return
+        return 0
 
     total_new_posts = 0
 
@@ -92,8 +94,9 @@ def check_new_posts():
         }
     )
     logger.info(f"Published refresh message: count={total_new_posts}")
+    return total_new_posts
 
-def check_inactive_users():
+def check_inactive_users() -> int:
     """
     1달 이상 글을 올리지 않은 사용자 조회 및 독촉 메일 발행
 
@@ -101,6 +104,8 @@ def check_inactive_users():
     1. DB에서 1달 이상 미업로드 사용자 조회
     2. 각 사용자에 대해 Mail 서버로 RabbitMQ 메시지 발행
     3. last_upload를 오늘 날짜로 업데이트 (스팸 방지)
+
+    :return: 발송된 알림 수.
     """
     logger.info("=== Starting inactive users check ===")
 
@@ -109,7 +114,7 @@ def check_inactive_users():
 
     if not inactive_users:
         logger.info("No inactive users found")
-        return
+        return 0
 
     total_reminders = 0
 
@@ -140,3 +145,4 @@ def check_inactive_users():
         total_reminders += 1
 
     logger.info(f"=== Finished inactive check: {total_reminders} reminders sent ===")
+    return total_reminders

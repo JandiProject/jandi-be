@@ -9,6 +9,25 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
+def _parse_lastmod(raw_value: str) -> datetime | None:
+    """
+    sitemap lastmod 값을 datetime으로 파싱합니다.
+
+    :param raw_value: raw lastmod 문자열.
+    :return: datetime 또는 None.
+    """
+    normalized = raw_value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+
+    for candidate in (normalized, normalized[:19], normalized[:10]):
+        try:
+            return datetime.fromisoformat(candidate)
+        except ValueError:
+            continue
+    return None
+
+
 class TistorySitemapParser:
     """티스토리 sitemap 기반 전체 글 URL 파서."""
 
@@ -52,10 +71,7 @@ class TistorySitemapParser:
 
             published_at = None
             if lastmod_tag:
-                try:
-                    published_at = datetime.fromisoformat(lastmod_tag.text.strip()[:10])
-                except ValueError:
-                    pass
+                published_at = _parse_lastmod(lastmod_tag.text)
 
             urls.append({"url": url, "published_at": published_at})
 

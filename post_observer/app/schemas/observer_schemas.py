@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+from app.models.schemas import ArticleSchema
 
 
 # ── RSS ──────────────────────────────────────────────────────────────────────
@@ -11,7 +13,7 @@ class RssUrlsResponse(BaseModel):
 
     platform: str
     account_id: str
-    articles: list[dict]
+    articles: list[ArticleSchema]
 
 
 # ── Crawl ─────────────────────────────────────────────────────────────────────

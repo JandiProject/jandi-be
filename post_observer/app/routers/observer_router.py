@@ -1,4 +1,5 @@
-from fastapi import APIRouter, BackgroundTasks, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from app.dependencies.internal_auth import require_internal_token
 from app.schemas.observer_schemas import (
     CheckInactiveUsersResponse,
     CheckNewPostsResponse,
@@ -9,7 +10,7 @@ from app.schemas.observer_schemas import (
     RegisterPlatformResponse,
     RssUrlsResponse,
 )
-from app.services.crawl_service import crawl_contents
+from app.services.crawl_service import crawl_contents, validate_crawl_url
 from app.services.observer_service import check_inactive_users, check_new_posts
 from app.services.register_service import register_platform
 from app.services.rss_service import fetch_rss
@@ -37,7 +38,7 @@ def get_rss_urls(
     return RssUrlsResponse(
         platform=platform,
         account_id=account_id,
-        articles=[article.model_dump(mode="json") for article in articles],
+        articles=articles,
     )
 
 
@@ -46,14 +47,22 @@ def get_rss_urls(
     response_model=CrawlContentsResponse,
     status_code=status.HTTP_200_OK,
 )
-def post_crawl_contents(req: CrawlContentsRequest) -> CrawlContentsResponse:
+def post_crawl_contents(
+    req: CrawlContentsRequest,
+    _: None = Depends(require_internal_token),
+) -> CrawlContentsResponse:
     """
     URL 목록을 받아 각 페이지의 본문을 크롤링합니다.
 
     :param req: 크롤링할 URL 목록.
     :return: URL별 본문 크롤링 결과.
     """
-    raw_results = crawl_contents(req.urls)
+    try:
+        validated_urls = [validate_crawl_url(url) for url in req.urls]
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    raw_results = crawl_contents(validated_urls)
     results = [CrawlResultItem(url=r["url"], content=r["content"]) for r in raw_results]
     return CrawlContentsResponse(results=results)
 
@@ -66,6 +75,7 @@ def post_crawl_contents(req: CrawlContentsRequest) -> CrawlContentsResponse:
 def run_register_platform(
     req: RegisterPlatformRequest,
     background_tasks: BackgroundTasks,
+    _: None = Depends(require_internal_token),
 ) -> RegisterPlatformResponse:
     """
     플랫폼 등록 시 해당 유저의 기존 글 수집을 백그라운드에서 시작합니다.
@@ -83,16 +93,14 @@ def run_register_platform(
     return RegisterPlatformResponse(message="수집이 시작되었습니다.")
 
 
-@router.post(
-    "/check-new-posts",
-    response_model=CheckNewPostsResponse,
-    status_code=status.HTTP_200_OK,
-)
-def run_check_new_posts() -> CheckNewPostsResponse:
+@router.post("/check-new-posts", response_model=CheckNewPostsResponse, status_code=status.HTTP_200_OK)
+def run_check_new_posts(
+    _: None = Depends(require_internal_token),
+) -> CheckNewPostsResponse:
     """
-    모든 사용자-플랫폼에 대해 새 글을 확인하고 RabbitMQ에 발행합니다.
+    모든 유저-플랫폼의 새 글을 수집하고 RabbitMQ에 발행합니다.
 
-    :return: 새 글 수집 결과.
+    :return: 수집된 새 글 수.
     """
     total_new_posts = check_new_posts()
     return CheckNewPostsResponse(total_new_posts=total_new_posts)
@@ -103,11 +111,13 @@ def run_check_new_posts() -> CheckNewPostsResponse:
     response_model=CheckInactiveUsersResponse,
     status_code=status.HTTP_200_OK,
 )
-def run_check_inactive_users() -> CheckInactiveUsersResponse:
+def run_check_inactive_users(
+    _: None = Depends(require_internal_token),
+) -> CheckInactiveUsersResponse:
     """
-    30일 이상 비활성 사용자를 조회하고 메일 알림을 발행합니다.
+    1달 이상 글을 올리지 않은 비활성 유저를 조회하고 메일 알림을 발행합니다.
 
-    :return: 비활성 사용자 알림 결과.
+    :return: 발송된 알림 수.
     """
     total_reminders = check_inactive_users()
     return CheckInactiveUsersResponse(total_reminders=total_reminders)

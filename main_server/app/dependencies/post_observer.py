@@ -5,6 +5,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 POST_OBSERVER_URL = os.getenv("POST_OBSERVER_URL", "http://localhost:8001")
+POST_OBSERVER_INTERNAL_TOKEN = os.getenv("POST_OBSERVER_INTERNAL_TOKEN")
 
 
 def notify_platform_registered(user_id: str, platform_name: str, account_id: str) -> None:
@@ -16,6 +17,10 @@ def notify_platform_registered(user_id: str, platform_name: str, account_id: str
     :param account_id: 플랫폼 계정 ID.
     :return: None.
     """
+    if not POST_OBSERVER_INTERNAL_TOKEN:
+        logger.error("POST_OBSERVER_INTERNAL_TOKEN is not configured")
+        return
+
     try:
         response = httpx.post(
             f"{POST_OBSERVER_URL}/api/observer/register-platform",
@@ -23,6 +28,9 @@ def notify_platform_registered(user_id: str, platform_name: str, account_id: str
                 "user_id": user_id,
                 "platform_name": platform_name,
                 "account_id": account_id,
+            },
+            headers={
+                "X-Internal-Token": POST_OBSERVER_INTERNAL_TOKEN,
             },
             timeout=10.0,
         )

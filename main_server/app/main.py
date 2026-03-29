@@ -4,6 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+# FK 참조 순서: 참조 대상(FIELDS 등) → trend 쪽 테이블
+import app.models.user_models  # noqa: F401
+import app.models.trend_models  # noqa: F401
+
 from .routers.auth_router import router as auth_router
 from .dependencies.database import Base, engine
 from .routers.platform_router import router as platform_router

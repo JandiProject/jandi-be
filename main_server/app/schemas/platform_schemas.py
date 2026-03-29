@@ -22,3 +22,17 @@ class ArticleSchema(BaseModel):
     published_at: str
     thumbnail: Optional[str] = None
     tags: Optional[List[str]] = None
+
+class TistoryTokenResponse(BaseModel):
+    """ 티스토리 인증 토큰 응답 스키마 """
+    header: str
+
+
+class NaverTokenResponse(BaseModel):
+    verification_token: Optional[str] = None
+    message: str
+
+
+class VerificationResponse(BaseModel):
+    """ 플랫폼 인증 결과 응답 스키마 """
+    is_verified: bool   

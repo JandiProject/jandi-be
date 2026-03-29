@@ -30,4 +30,9 @@ class ExternalPost(Base):
     # 분석 상태 및 결과
     is_analyzed = Column(Boolean, default=False, index=True)
     summary = Column(Text, nullable=True)
-    field_id = Column(Integer, ForeignKey('FIELDS.id',ondelete='CASCADE', onupdate='CASCADE'), nullable=True, index=True)
+    field_id = Column(
+        Integer,
+        ForeignKey("FIELDS.field_id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=True,
+        index=True,
+    )

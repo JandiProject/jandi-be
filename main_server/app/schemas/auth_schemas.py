@@ -2,7 +2,7 @@
 
 import re
 from pydantic import BaseModel, EmailStr, field_validator
-
+from datetime import datetime
 
 class AuthBaseSchema(BaseModel):
     pass
@@ -35,6 +35,12 @@ class SignUpRequest(BaseModel):
             raise ValueError("Password must contain at least one special character")
         return value
 
+class SignUpResponse(BaseModel):
+    """회원가입 응답 모델"""
+    message: str
+    email: str
+    verification_status: str = "pending"
+    expires_at: datetime
 
 class SignInResponse(BaseModel):
     """
@@ -51,3 +57,24 @@ class SignInRequest(BaseModel):
     """
     email: EmailStr
     password: str
+
+class TokenRefreshRequest(BaseModel):
+    """토큰 재발급 요청 모델"""
+    refresh_token: str
+
+class PasswordResetRequest(BaseModel):
+    """비밀번호 재설정 요청 모델"""
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    """새 비밀번호 등록 모델"""
+    newPassword: str
+
+class EmailCheckResponse(BaseModel):
+    """이메일 중복 확인 응답 모델"""
+    available: bool
+    message: str
+
+class VerificationStatusResponse(BaseModel):
+    """이메일 인증 여부 조회 응답 모델"""
+    is_verified: bool

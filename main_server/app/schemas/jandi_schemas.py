@@ -11,6 +11,6 @@ class GetJandiResponse(BaseModel):
     category: str
     count: int
 
-class GetSignedUrlRequest(BaseModel):
+class GetSignedUrlResponse(BaseModel):
     """서명된 URL 응답 모델"""
     url: str

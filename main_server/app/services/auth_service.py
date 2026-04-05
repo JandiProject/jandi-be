@@ -1,132 +1,267 @@
-from datetime import datetime, timedelta, timezone
-import jwt
 import os
+import jwt
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
-from app.dependencies.database import get_db
-from app.models.user_models import User, AuthUser
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
-from dotenv import load_dotenv
-from app.schemas.auth_schemas import SignUpRequest, SignInRequest, SignInResponse
-from app.services.email_service import send_verification_email
+from app.schemas.auth_schemas import *
+from app.services.email_service import send_verification_email, send_password_reset_email
+from app.models.user_models import User, AuthUser
+from fastapi.responses import HTMLResponse
+from app.templates.email_templates import get_verification_html, get_verify_success_page_html, get_password_reset_html
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-SECRET_KEY = os.getenv("JWT_SECRET")
+SECRET_KEY = os.getenv("JWT_SECRET", "jandi_secret_key")
 ALGORITHM = "HS256"
 
 class AuthService:
     def __init__(self, repository):
         """
-        인증 관련 비즈니스 로직 서비스를 초기화.
+        인증 관련 비즈니스 로직 서비스를 초기화합니다.
 
-        :param repository: DB 접근을 담당하는 저장소 객체
+        :param repository: 데이터베이스 접근을 담당하는 저장소 객체
         :type repository: AuthRepository
         """
         self.repository = repository
 
-    async def register_new_user(self, data:SignUpRequest):
-
+    def _generate_token(self, payload: dict, expires_delta: timedelta) -> str:
         """
-        신규 유저 등록 및 이메일 인증 발송 프로세스를 처리.
+        내부적으로 사용하는 JWT 토큰 생성 유틸리티입니다.
 
-        :param data: 검증된 회원가입 요청 데이터
-        :type data: SignUpRequest
-        :return: 성공 메시지 딕셔너리
+        :param payload: 토큰에 담을 데이터 내용
+        :type payload: dict
+        :param expires_delta: 토큰의 유효 기간
+        :type expires_delta: timedelta
+        :return: 인코딩된 JWT 토큰 문자열
+        :rtype: str
+        """
+        to_encode = payload.copy()
+        expire = datetime.now(timezone.utc) + expires_delta
+        to_encode.update({"exp": expire})
+        return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    async def check_email_availability(self, email: str) -> dict:
+        """
+        회원가입 전 이메일의 중복 여부를 확인합니다.
+
+        :param email: 중복 확인을 진행할 사용자의 이메일
+        :type email: str
+        :return: 사용 가능 여부와 안내 메시지
         :rtype: dict
-        :raises HTTPException: 이미 이메일이 존재할 경우 발생
         """
-        
-        #1. 중복검사
-        '#TODO: /api/auth/check-email로 중복 검사 api 제작'
-    
+        user = self.repository.get_user_by_email(email)
+        if user:
+            return {"available": False, "message": "이미 존재하는 이메일입니다."}
+        return {"available": True, "message": "사용 가능한 이메일입니다."}
+
+    async def register_user(self, data: SignUpRequest) -> SignUpResponse:
+        """
+        신규 유저를 등록하고 1시간 유효한 인증 메일을 발송합니다.
+
+        :param data: 회원가입에 필요한 유저 정보 (email, password, name)
+        :type data: SignUpRequest
+        :return: 가입 정보 및 인증 만료 시간을 포함한 응답 객체
+        :rtype: SignUpResponse
+        :raises HTTPException: 이미 가입된 이메일일 경우 409 Conflict 발생
+        """
         if self.repository.get_user_by_email(data.email):
-            raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다")
-        #2. User 생성
-        new_user = self.repository.create_user(data.email, data.name)
+            raise HTTPException(status_code=409, detail="이미 가입된 이메일입니다.")
 
-        #3. 비밀번호 해시 및 토큰 생성
-        hashed_pw = pwd_context.hash(data.password)
-        verify_token = jwt.encode(
-            {"sub" : str(new_user.user_id), "exp":datetime.now(datetime.timezone.utc) + timedelta(hours=1)},
-            SECRET_KEY, algorithm = ALGORITHM
-        )
+        user = self.repository.create_user(data.email, data.name)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        verify_token = self._generate_token({"sub": str(user.user_id), "type": "verify"}, timedelta(hours=1))
 
-        #AuthUser 생성 및 저장
         shadow = AuthUser(
-            user_id = new_user.user_id,
-            email = data.email,
-            hashed_password = hashed_pw,
+            user_id=user.user_id,
+            email=data.email,
+            hashed_password=pwd_context.hash(data.password),
             is_verified=False,
             verification_token=verify_token
         )
-        self.repository.create_auth_user(shadow)
-
-        #5. 이메일 발송
+        self.repository.save_auth_user(shadow)
         await send_verification_email(data.email, verify_token)
-        return {"message" : "회원가입 완료! 이메일을 확인해주세요."}
-    
-    def verify_email(self, token:str):
+        return SignUpResponse(message="회원가입 성공", email=data.email, verification_status= "pending",expires_at=expires_at)
 
+    async def get_verification_status(self, email: str) -> dict:
         """
-        메일 인증 토큰의 유효성을 검증하고 계정을 활성화.
+        특정 이메일의 인증 완료 여부를 조회합니다.
 
-        :param token: 이메일로 발송된 JWT 인증 토큰
-        :type token: str
-        :return: 인증 완료 메시지
+        :param email: 조회를 원하는 사용자의 이메일
+        :type email: str
+        :return: 인증 여부 (True/False)
         :rtype: dict
-        :raises HTTPException: 토큰 만료 또는 유효하지 않을 때 발생
+        :raises HTTPException: 존재하지 않는 유저일 경우 404 Not Found 발생
         """
-        
+        user = self.repository.get_user_by_email(email)
+        if not user:
+            raise HTTPException(status_code=404, detail="유저를 찾을 수 없습니다.")
+        shadow = self.repository.get_auth_user_by_id(user.user_id)
+        return {"is_verified": shadow.is_verified if shadow else False}
+
+    async def resend_verification(self, email: str) -> dict:
+        """
+        인증 메일을 재전송합니다. 보안을 위해 유저 존재 여부와 관계없이 성공 응답을 반환합니다.
+
+        :param email: 인증 메일을 다시 받을 사용자의 이메일
+        :type email: str
+        :return: 재전송 성공 메시지
+        :rtype: dict
+        """
+        user = self.repository.get_user_by_email(email)
+        if user:
+            shadow = self.repository.get_auth_user_by_id(user.user_id)
+            if shadow and not shadow.is_verified:
+                token = self._generate_token({"sub": str(user.user_id), "type": "verify"}, timedelta(hours=1))
+                shadow.verification_token = token
+                self.repository.commit()
+                await send_verification_email(email, token)
+        return {"message": "인증 메일이 재전송되었습니다."}
+
+    async def verify_email_token(self, token: str)-> HTMLResponse:
+        """
+        이메일 인증 토큰을 검증하고 사용자의 인증 상태를 활성화한 뒤 성공 HTML 페이지를 반환합니다.
+
+        :param token: 이메일 링크에 포함된 JWT 인증 토큰
+        :type token: str
+        :return: 브라우저에서 렌더링될 HTML 페이지
+        :rtype: HTMLResponse
+        :raises HTTPException: 잘못된 형식의 토큰일 경우 400 Bad Request 발생
+        :raises HTTPException: 토큰 만료 또는 변조된 경우 401 Unauthorized 발생
+        :raises HTTPException: 해당 유저 정보를 찾을 수 없을 경우 404 Not Found 발생
+        :raises HTTPException: 이미 인증이 완료된 유저일 경우 409 Conflict 발생
+        """
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("type") != "verify":
+                raise HTTPException(status_code=400, detail="잘못된 용도의 토큰입니다.")
             user_id = payload["sub"]
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code = 400, detail="토큰이 만료되었습니다")
-        except jwt.InvalidTokenError:
-            raise HTTPException(status_code=400, detail="유효하지 않은 토큰입니다")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="유효하지 않거나 만료된 토큰입니다.")
         
         shadow = self.repository.get_auth_user_by_id(user_id)
-        if not shadow or shadow.verification_token != token:
-            raise HTTPException(status_code=400, detail="인증 정보가 올바르지 않습니다")
+        if not shadow: raise HTTPException(status_code=404, detail="정보를 찾을 수 없습니다.")
+
+        if shadow.is_verified:
+            raise HTTPException(status_code=409, detail="이미 인증이 완료된 계정입니다.")
         
-        shadow.is_verified=True
+        shadow.is_verified = True
         shadow.verification_token = None
         self.repository.commit()
-        self.repository.refresh_user_stat()
-        return{"message" : "이메일 인증 완료!"}
-    
-    def sign_in(self, data: SignInRequest):
 
+        html_content = get_verification_html()
+        return "이메일 인증이 완료되었습니다."
+
+    async def login(self, data: SignInRequest) -> SignInResponse:
         """
-        사용자 자격 증명을 확인하고 서비스 이용 토큰을 발급.
+        로그인을 처리하고 Access 및 Refresh 토큰을 발급합니다. 사유별 명확한 에러를 반환합니다.
 
-        :param data: 로그인 요청 데이터 (이메일, 비번)
+        :param data: 로그인 요청 정보 (email, password)
         :type data: SignInRequest
-        :return: 엑세스 토큰 정보
-        :rtype: dict
-        :raises HTTPException: 인증 실패 또는 미인증 계정일 때 발생
+        :return: Access 및 Refresh 토큰 객체
+        :rtype: SignInResponse
+        :raises HTTPException: 이메일 미존재(400), 비밀번호 불일치(400), 미인증 계정(403) 발생
         """
-
         user = self.repository.get_user_by_email(data.email)
-        '#TODO: CIA triad에서 사용자 존재 여부를 드러내는 것은 기밀성을 떨어트릴 수 있습니다. '
-        '#TODO: 이메일 존재 여부와 비밀번호 일치 여부를 나타내는 대신 이메일과 비밀번호가 일치하지 않는다 정도로 보여주는 건 어떨까요?  '
         if not user:
-            raise HTTPException(status_code=400, detail="존재하지 않는 이메일입니다")
+            raise HTTPException(status_code=401, detail="존재하지 않는 이메일입니다.")
+        
         shadow = self.repository.get_auth_user_by_id(user.user_id)
         if not shadow or not pwd_context.verify(data.password, shadow.hashed_password):
-            raise HTTPException(status_code=400, detail="비밀번호가 일치")
-        
-        if user.email != shadow.email:
-            user.email = shadow.email
-            self.repository.commit()
+            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
+            
+        if not shadow.is_verified:
+            raise HTTPException(status_code=403, detail="이메일 인증이 필요합니다.")
 
-        token = jwt.encode(
-            {"sub": str(user.user_id), "exp":datetime.now(datetime.timezone.utc) + timedelta(days=7)},
-            SECRET_KEY, algorithm=ALGORITHM
+        access = self._generate_token({"sub": str(user.user_id), "scope": "access"}, timedelta(hours=2))
+        refresh = self._generate_token({"sub": str(user.user_id), "scope": "refresh"}, timedelta(days=7))
+        return SignInResponse(access_token=access, refresh_token=refresh)
+
+    async def refresh_access_token(self, refresh_token: str) -> dict:
+        """
+        유효한 Refresh 토큰을 사용하여 새로운 Access 토큰을 발급합니다.
+
+        :param refresh_token: 사용자가 보유한 Refresh 토큰
+        :type refresh_token: str
+        :return: 새로 발급된 Access 토큰 정보
+        :rtype: dict
+        :raises HTTPException: 토큰이 유효하지 않거나 만료된 경우 401 Unauthorized 발생
+        :raises HTTPException: 인증되지 않았거나 차단된 유저일 경우 403 Forbidden 발생
+        """
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("scope") != "refresh": 
+                raise ValueError("Invalid scope")
+            new_access = self._generate_token({"sub": payload["sub"], "scope": "access"}, timedelta(hours=2))
+            return {"access_token": new_access, "refresh_token": refresh_token}
+        except:
+            raise HTTPException(status_code=401, detail="유효하지 않은 리프레시 토큰입니다.")
+        
+        shadow = self.repository.get_auth_user_by_id(user_id)
+        if not shadow or not shadow.is_verified:
+            raise HTTPException(
+                status_code=403, 
+                detail="권한이 없습니다. 다시 로그인하거나 이메일 인증을 완료해주세요."
+            )
+        # 새로운 Access 토큰 생성
+        new_access = self._generate_token(
+            {"sub": user_id, "scope": "access"}, 
+            timedelta(hours=2)
         )
-        return {"access_token": token}
-        
-        
+        return {"access_token": new_access, "refresh_token": refresh_token}
+
+    async def request_pw_reset(self, email: str) -> dict:
+        """
+        비밀번호 재설정을 위한 30분 유효 임시 토큰 링크를 메일로 발송합니다.
+
+        :param email: 비밀번호를 재설정할 사용자의 이메일
+        :type email: str
+        :return: 안내 메시지
+        :rtype: dict
+        """
+        user = self.repository.get_user_by_email(email)
+        if user:
+            token = self._generate_token({"sub": str(user.user_id), "type": "pw_reset"}, timedelta(minutes=30))
+            await send_password_reset_email(email, token)
+        return {"message": "인증 메일이 전송되었습니다."}
+
+    async def confirm_pw_reset(self, token: str, new_pw: str) -> dict:
+        """
+        임시 토큰을 확인하고 사용자의 비밀번호를 새로운 해시값으로 업데이트합니다.
+
+        :param token: URL 경로에 포함된 30분 유효 임시 토큰
+        :type token: str
+        :param new_pw: 새로 등록할 비밀번호 원문
+        :type new_pw: str
+        :return: 성공 확인 메시지
+        :rtype: dict
+        :raises HTTPException: 잘못된 토큰 형식일 경우 400 Bad Request 발생
+        :raises HTTPException: 토큰 만료 또는 변조 시 401 Unauthorized 발생
+        :raises HTTPException: 유저 정보를 찾을 수 없을 경우 404 Not Found 발생
+        :raises HTTPException: 기존 비밀번호와 동일할 경우 409 Conflict 발생
+        """
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("type") != "pw_reset": 
+                raise ValueError()
+            user_id = payload["sub"]
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="유효기간 만료 혹은 잘못된 토큰입니다.")
+
+        shadow = self.repository.get_auth_user_by_id(user_id)
+        # [404 로직] 토큰의 유저는 존재하나 DB에 인증 정보(Shadow)가 없는 경우
+        if not shadow:
+            raise HTTPException(status_code=404, detail="해당 유저의 인증 정보를 찾을 수 없습니다.")
+
+        # [409 로직] 보안 정책: 기존 비밀번호와 새 비밀번호가 동일한지 체크
+        if pwd_context.verify(new_pw, shadow.hashed_password):
+            raise HTTPException(status_code=409, detail="기존 비밀번호와 다른 비밀번호를 입력해주세요.")
+
+        # 비밀번호 업데이트
+        shadow.hashed_password = pwd_context.hash(new_pw)
+    
+    
+        self.repository.commit()
 
 
+        '#TODO: 바뀐 새 비밀번호를 평문으로 제시할 경우 패킷 공격에 취약하므로'
+        '#TODO: 내부적으로 업데이트, 응답으로는 성공적으로 변경되었음만 알림'
+        return {"newPassword": "비밀번호가 성공적으로 변경되었습니다."}

@@ -16,8 +16,8 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER")            
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  
 
-"#TODO: 프론트엔드 주소 정해질때까지 로컬테스트용" 
-FRONTEND_URL = "http://localhost:8000"
+"#TODO: 임시 프론트엔드 주소" 
+FRONTEND_URL = "http://localhost:3000"
 MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)  
 
 async def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) -> None:

@@ -4,6 +4,24 @@ import re
 from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime
 
+# 비밀번호 공통 검증 함수
+def validate_password(value: str) -> str:
+    """
+    비밀번호 유효성 검사 공통 함수:
+    8자 이상, 대문자, 소문자, 숫자, 특수문자 포함 여부 확인
+    """
+    if len(value) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", value):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", value):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r"\d", value):
+        raise ValueError("Password must contain at least one digit")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+        raise ValueError("Password must contain at least one special character")
+    return value
+
 class AuthBaseSchema(BaseModel):
     pass
 
@@ -22,18 +40,7 @@ class SignUpRequest(BaseModel):
     @field_validator("password") 
     @classmethod
     def password_strength(cls, value):
-        # Minimum 8 characters, at least one uppercase, one lowercase, one digit, one special character
-        if len(value) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not re.search(r"[A-Z]", value):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not re.search(r"[a-z]", value):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not re.search(r"\d", value):
-            raise ValueError("Password must contain at least one digit")
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-            raise ValueError("Password must contain at least one special character")
-        return value
+        return validate_password(value) #공통 함수 호출
 
 class SignUpResponse(BaseModel):
     """회원가입 응답 모델"""
@@ -77,6 +84,12 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     """새 비밀번호 등록 모델"""
     newPassword: str
+
+    @field_validator("newPassword")
+    @classmethod
+    def password_strength(cls, value):
+        # 공통 함수 호출
+        return validate_password(value)
 
 class EmailCheckResponse(BaseModel):
     """이메일 중복 확인 응답 모델"""

@@ -77,7 +77,7 @@ class AuthService:
             is_verified=False,
             verification_token=verify_token
         )
-        self.repository.save_auth_user(shadow)
+        self.repository.create_auth_user(shadow)
         await send_verification_email(data.email, verify_token)
         return SignUpResponse(message="회원가입 성공", email=data.email, verification_status= "pending",expires_at=expires_at)
 
@@ -147,8 +147,8 @@ class AuthService:
         shadow.verification_token = None
         self.repository.commit()
 
-        html_content = get_verification_html()
-        return "이메일 인증이 완료되었습니다."
+        html_content = get_verify_success_page_html()
+        return HTMLResponse(content=html_content, status_code=200)
 
     async def login(self, data: SignInRequest) -> SignInResponse:
         """
@@ -175,38 +175,46 @@ class AuthService:
         refresh = self._generate_token({"sub": str(user.user_id), "scope": "refresh"}, timedelta(days=7))
         return SignInResponse(access_token=access, refresh_token=refresh)
 
-    async def refresh_access_token(self, refresh_token: str) -> dict:
+    async def refresh_access_token(self, refresh_token: str) -> TokenRefreshResponse:
         """
         유효한 Refresh 토큰을 사용하여 새로운 Access 토큰을 발급합니다.
 
         :param refresh_token: 사용자가 보유한 Refresh 토큰
         :type refresh_token: str
         :return: 새로 발급된 Access 토큰 정보
-        :rtype: dict
+        :rtype: TokenRefreshResponse응답모델
         :raises HTTPException: 토큰이 유효하지 않거나 만료된 경우 401 Unauthorized 발생
         :raises HTTPException: 인증되지 않았거나 차단된 유저일 경우 403 Forbidden 발생
         """
         try:
+            # 1. 토큰 디코딩
             payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            if payload.get("scope") != "refresh": 
-                raise ValueError("Invalid scope")
-            new_access = self._generate_token({"sub": payload["sub"], "scope": "access"}, timedelta(hours=2))
-            return {"access_token": new_access, "refresh_token": refresh_token}
-        except:
-            raise HTTPException(status_code=401, detail="유효하지 않은 리프레시 토큰입니다.")
         
+            # 2. Signin에서 "scope": "refresh"로 넣었는지 확인하세요!
+            if payload.get("scope") != "refresh":
+                raise HTTPException(status_code=401, detail="리프레시 토큰이 아닙니다.")
+            
+            user_id = payload.get("sub")
+            if not user_id:
+                raise HTTPException(status_code=401, detail="토큰 페이로드가 유효하지 않습니다.")
+        
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="토큰이 만료되었습니다. 다시 로그인하세요.")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
+
+        # 3. 유저 상태 확인 (DB 조회)
         shadow = self.repository.get_auth_user_by_id(user_id)
         if not shadow or not shadow.is_verified:
-            raise HTTPException(
-                status_code=403, 
-                detail="권한이 없습니다. 다시 로그인하거나 이메일 인증을 완료해주세요."
-            )
-        # 새로운 Access 토큰 생성
+            raise HTTPException(status_code=403, detail="인증되지 않은 유저이거나 존재하지 않는 유저입니다.")
+
+        #4. 새로운 Access 토큰만 생성해서 반환
         new_access = self._generate_token(
             {"sub": user_id, "scope": "access"}, 
             timedelta(hours=2)
         )
-        return {"access_token": new_access, "refresh_token": refresh_token}
+    
+        return TokenRefreshResponse(refresh_token=refresh_token, access_token=new_access)
 
     async def request_pw_reset(self, email: str) -> dict:
         """

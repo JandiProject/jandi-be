@@ -14,8 +14,10 @@ load_dotenv()
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER")            
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")   
-FRONTEND_URL = "http://136.110.239.66"
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  
+
+"#TODO: 프론트엔드 주소 정해질때까지 로컬테스트용" 
+FRONTEND_URL = "http://localhost:8000"
 MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)  
 
 async def _send_email(to_email: str, subject: str, html_body: str, plain_body: str) -> None:
@@ -63,7 +65,7 @@ async def send_verification_email(email: str, token: str) -> None:
 
 async def send_password_reset_email(email: str, token: str) -> None:
     """비밀번호 재설정 메일 발송 로직"""
-    reset_url = f"{FRONTEND_URL.rstrip('/')}/password-reset?token={token}"
+    reset_url = f"{FRONTEND_URL.rstrip('/')}/api/auth/password/reset/{token}"
     
     subject = "[잔디] 비밀번호 재설정 안내"
     html_body = get_password_reset_html(reset_url) # 템플릿 호출

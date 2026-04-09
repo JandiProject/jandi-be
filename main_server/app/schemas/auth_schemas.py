@@ -47,6 +47,7 @@ class SignInResponse(BaseModel):
     로그인 응답 모델
     """
     access_token: str
+    refresh_token: str
 
 
 
@@ -61,6 +62,13 @@ class SignInRequest(BaseModel):
 class TokenRefreshRequest(BaseModel):
     """토큰 재발급 요청 모델"""
     refresh_token: str
+
+class TokenRefreshResponse(BaseModel):
+    """토큰 재발급 응답 모델"""
+    '#TODO : 액세스 토큰까지 줘야 되는데 api명세서에 리프레시 토큰만 명시했습니다. 수정하겠습니다.'
+    refresh_token: str
+    access_token : str
+
 
 class PasswordResetRequest(BaseModel):
     """비밀번호 재설정 요청 모델"""

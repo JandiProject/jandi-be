@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, ForeignKeyConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from app.dependencies.database import Base
+from app.dependencies.database import Base, ViewBase
 
 
 class Posts(Base):
@@ -13,27 +13,20 @@ class Posts(Base):
         primary_key=True,
     )
     platform_id = Column(
-        UUID(as_uuid=True),
+        Integer,
         ForeignKey("PLATFORM.platform_id"),
         nullable=False,
         primary_key=True,
     )
+    field_id = Column(
+        Integer,
+        ForeignKey("FIELDS.field_id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )  # 필드 ID 추가
     date = Column(DateTime, nullable=False)
     category = Column(String, nullable=False)
     title = Column(String, nullable=False)
 
-
-class POST_AGG(Base):
-    __tablename__ = "POST_AGG"
-    category = Column(String, nullable=False, primary_key=True)
-    date = Column(DateTime, nullable=False, primary_key=True)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("USER.user_id"),
-        nullable=False,
-        primary_key=True,
-    )
-    count = Column(Integer, nullable=False)
 
 
 class POST_KEYWORD(Base):
@@ -41,7 +34,7 @@ class POST_KEYWORD(Base):
 
     url = Column(String, nullable=False, primary_key=True)
     user_id = Column(UUID(as_uuid=True), nullable=False, primary_key=True)
-    platform_id = Column(UUID(as_uuid=True), nullable=False, primary_key=True)
+    platform_id = Column(Integer, nullable=False, primary_key=True)
     keyword_id = Column(
         Integer,
         ForeignKey("KEYWORDS.id", ondelete="CASCADE", onupdate="CASCADE"),
@@ -57,3 +50,17 @@ class POST_KEYWORD(Base):
             onupdate="CASCADE",
         ),
     )
+
+# MATERIALIZED VIEW
+class POST_AGG(ViewBase):
+    __tablename__ = "POST_AGG"
+    __table_args__ = {'info': {'is_view': True}}
+    
+    category = Column(String, nullable=False, primary_key=True)
+    date = Column(DateTime, nullable=False, primary_key=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        primary_key=True,
+    )
+    count = Column(Integer, nullable=False)

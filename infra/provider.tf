@@ -19,5 +19,5 @@ terraform {
 provider "google" {
     project = var.project_id
     region = var.region
-    credentials = file("calm-scarab-478705-c7-b25fdd5670c3.json")
+    # credentials = file("calm-scarab-478705-c7-b25fdd5670c3.json")
 }

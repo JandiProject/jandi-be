@@ -1,6 +1,14 @@
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel
 
+class Platforms(str, Enum):
+    """
+        플랫폼 목록을 enum으로 관리합니다.
+    """
+    TISTORY="tistory"
+    NAVER="naver"
+    VELOG="velog"
 
 class UserPlatformRequest(BaseModel):
     """ 유저-플랫폼 매핑 정보 요청 스키마 """

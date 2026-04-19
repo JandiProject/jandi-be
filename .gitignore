@@ -164,3 +164,6 @@ vite.config.ts.timestamp-*
 
 calm-scarab-478705-c7-b25fdd5670c3.json
 **/secret.yaml
+
+**/values.yaml
+AGENTS.md

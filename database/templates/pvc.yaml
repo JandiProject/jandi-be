@@ -1,0 +1,12 @@
+# pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce  # 한 번에 하나의 노드만 읽고 쓰기 가능
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard-rwo

@@ -2,6 +2,8 @@ from sqlalchemy import Column, text
 from app.models.post_models import Posts
 from app.models.platform_models import Platform, UserPlatform
 from sqlalchemy.orm import Session
+from app.models.platform_models import UserPlatformVerification # 모델 import 확인
+
 
 
 class PlatformRepository:
@@ -88,6 +90,66 @@ class PlatformRepository:
             UserPlatform.user_id == user_id,
         ).all()
     
+    def get_verification_token(self, user_id: str, platform_id: Column) -> UserPlatformVerification | None:
+        """
+        사용자와 플랫폼 ID로 발급된 검증 토큰 조회
+        """
+        return self.db.query(UserPlatformVerification).filter(
+            UserPlatformVerification.user_id == user_id,
+            UserPlatformVerification.platform_id == platform_id
+        ).first()
+
+    def get_verification_by_token(self, token: str) -> UserPlatformVerification | None:
+        return self.db.query(UserPlatformVerification).filter(
+            UserPlatformVerification.token == token
+        ).first()
+
+    def get_user_platform_by_platform_and_account(
+        self, platform_id: Column, account_id: str
+    ) -> UserPlatform | None:
+        return self.db.query(UserPlatform).filter(
+            UserPlatform.platform_id == platform_id,
+            UserPlatform.account_id == account_id,
+        ).first()
+
+    def create_verification_token(
+        self,
+        user_id: str,
+        platform_id: Column,
+        token: str,
+        pending_account_id: str | None = None,
+    ) -> UserPlatformVerification:
+        """
+        새로운 검증 토큰 레코드 생성
+        """
+        new_token = UserPlatformVerification(
+            user_id=user_id,
+            platform_id=platform_id,
+            token=token,
+            pending_account_id=pending_account_id,
+        )
+        self.db.add(new_token)
+        return new_token
+
+    def upsert_verification_token(
+        self,
+        user_id: str,
+        platform_id: Column,
+        token: str,
+        pending_account_id: str | None = None,
+    ) -> UserPlatformVerification:
+        existing = self.get_verification_token(user_id, platform_id)
+        if existing:
+            existing.token = token  # type: ignore[assignment]
+            existing.pending_account_id = pending_account_id  # type: ignore[assignment]
+            return existing
+        return self.create_verification_token(
+            user_id, platform_id, token, pending_account_id
+        )
+    def delete_verification_record(self, verification_record: UserPlatformVerification):
+        """인증 완료 후 임시 토큰 레코드 삭제"""
+        self.db.delete(verification_record)
+
     def refresh_materialized_view(self):
         self.db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
         self.db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))

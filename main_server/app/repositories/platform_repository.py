@@ -1,4 +1,4 @@
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from app.models.post_models import Posts
 from app.models.platform_models import Platform, UserPlatform
 from sqlalchemy.orm import Session
@@ -150,3 +150,8 @@ class PlatformRepository:
         """인증 완료 후 임시 토큰 레코드 삭제"""
         self.db.delete(verification_record)
 
+    def refresh_materialized_view(self):
+        self.db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
+        self.db.execute(text('REFRESH MATERIALIZED VIEW "POST_AGG"'))
+            
+            

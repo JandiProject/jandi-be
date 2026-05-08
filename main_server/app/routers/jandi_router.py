@@ -32,7 +32,7 @@ async def get_jandi_data(date: str | None = None,db: Session = Depends(get_db), 
     if len(posts) == 0:
         return []
     # 그걸 [GetJandiResponse]로 변환
-    response = [GetJandiResponse(date=post.date.strftime("%Y-%m-%d"), topic=post.category, count=post.count) for post in posts] # type: ignore
+    response = [GetJandiResponse(date=post.date.strftime("%Y-%m-%d"), category=post.category, count=post.count) for post in posts] # type: ignore
     return response
 
 class GetSignedUrlRequest(BaseModel):
@@ -64,7 +64,7 @@ def get_jandi(db: Session = Depends(get_db), token: str|None = None):
     if len(posts) == 0:
         return []
     # 그걸 [GetJandiResponse]로 변환
-    response = [{"date": post.date.strftime("%Y-%m-%d"), "topic": post.category, "count": post.count} for post in posts]
+    response = [{"date": post.date.strftime("%Y-%m-%d"), "category": post.category, "count": post.count} for post in posts]
 
     
     return HTMLResponse(content=get_html_template(response), status_code=200)

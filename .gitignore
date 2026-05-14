@@ -167,3 +167,24 @@ calm-scarab-478705-c7-b25fdd5670c3.json
 
 **/values.yaml
 AGENTS.md
+
+# --- JetBrains (PyCharm, IntelliJ) 관련 설정 ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- Python 빌드 및 배포 관련 (추가 권장) ---
+build/
+dist/
+*.egg-info/
+
+# --- Windows 시스템 파일 ---
+Thumbs.db
+desktop.ini
+
+# --- 개인 설정 및 임시 파일 ---
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

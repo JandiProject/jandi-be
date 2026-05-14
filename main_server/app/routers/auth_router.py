@@ -1,159 +1,130 @@
-# app/routers/auth_router.py
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from datetime import datetime, timedelta
-import jwt
-import os
 from app.dependencies.database import get_db
-from app.services.email_service import send_verification_email
-from app.models.user_models import User, AuthUser
-from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.schemas.auth_schemas import *
+from app.repositories.auth_repository import AuthRepository
+from app.services.auth_service import AuthService
+from fastapi.responses import HTMLResponse
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-# TODO: 인증 도메인 비즈니스 로직은 app/services/auth_service.py로 점진 이관
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+@router.get("/check-email", response_model=EmailCheckResponse)
+async def check_email(email: EmailStr = Query(...), db: Session = Depends(get_db)):
+    """
+    이메일 중복 검사를 수행합니다.
 
-SECRET_KEY = os.getenv("JWT_SECRET")
-ALGORITHM = "HS256"
+    :param email: 사용자가 입력한 이메일 주소
+    :type email: EmailStr
+    :param db: 데이터베이스 세션 (Depends 주입)
+    :type db: Session
+    :return: 사용 가능 여부 결과
+    """
+    return await AuthService(AuthRepository(db)).check_email_availability(email)
 
-
-
-# Pydantic Models : 값을 쿼리가 아닌 json으로 넘겨주기 위해
-
-class SignUpRequest(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-
-class SignInRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-# JWT 생성
-
-def create_access_token(user_id: str):
-    payload = {
-        "sub": user_id,
-        "exp": datetime.utcnow() + timedelta(hours=24),
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
-# 회원가입
-
-@router.post("/signup")
+@router.post("/signup", status_code=201, response_model=SignUpResponse)
 async def signup(data: SignUpRequest, db: Session = Depends(get_db)):
-    # 이메일 중복 검사
-    user = db.query(User).filter(User.email == data.email).first()
-    if user:
-        raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다")
+    """
+    회원가입을 진행하고 인증 메일을 발송합니다.
 
-    # User 생성
-    new_user = User(email=data.email, name=data.name)
-    db.add(new_user)
-    db.flush()  # user_id 생성됨
+    :param data: 이메일, 비밀번호, 이름이 포함된 요청 바디
+    :type data: SignUpRequest
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 가입 처리 상세 정보
+    """
+    return await AuthService(AuthRepository(db)).register_user(data)
 
-    # 비밀번호 해시
-    hashed_pw = pwd_context.hash(data.password)
+@router.get("/is-verified", response_model=VerificationStatusResponse)
+async def is_verified(email: EmailStr = Query(...), db: Session = Depends(get_db)):
+    """
+    사용자의 이메일 인증 여부를 확인합니다.
 
-    # 인증용 토큰
-    verify_token = jwt.encode(
-        {"sub": str(new_user.user_id), "exp": datetime.utcnow() + timedelta(hours=1)},
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
+    :param email: 조회할 사용자의 이메일
+    :type email: EmailStr
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 인증 완료 여부 (bool)
+    """
+    return await AuthService(AuthRepository(db)).get_verification_status(email)
 
-    # AuthUser 생성
-    shadow = AuthUser(
-        user_id=new_user.user_id,
-        email=data.email,
-        hashed_password=hashed_pw,
-        is_verified=False,
-        verification_token=verify_token
-    )
+@router.post("/resend-email")
+async def resend_email(email: EmailStr = Query(...), db: Session = Depends(get_db)):
+    """
+    미인증 사용자의 이메일로 인증 메일을 재전송합니다.
 
-    db.add(shadow)
-    db.commit()
+    :param email: 인증 메일을 다시 보낼 이메일 주소
+    :type email: EmailStr
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 재전송 결과 메시지
+    """
+    return await AuthService(AuthRepository(db)).resend_verification(email)
 
-    # 이메일 인증 발송
-    await send_verification_email(data.email, verify_token)
+@router.get("/verify-email", response_class=HTMLResponse)
+async def verify_email(token: str = Query(...), db: Session = Depends(get_db)):
+    """
+    이메일 인증 링크 클릭 시 토큰을 검증하고 결과 페이지 보여줌.
 
-    return {"message": "회원가입 완료! 이메일을 확인해주세요."}
+    :param token: 이메일에 포함된 JWT 인증 토큰
+    :type token: str
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 인증 성공 시 html 페이지 반환
+    :rtype: HTMLResponse
+    """
+    service = AuthService(AuthRepository(db))
+    return await service.verify_email_token(token)
 
+@router.post("/signin", response_model=SignInResponse)
+async def signin(data: SignInRequest, db: Session = Depends(get_db)):
+    """
+    로그인을 시도하고 토큰을 발급받습니다.
 
-# 이메일 인증 API
+    :param data: 이메일과 비밀번호 정보
+    :type data: SignInRequest
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: Access 및 Refresh 토큰
+    """
+    return await AuthService(AuthRepository(db)).login(data)
 
-@router.get("/verify-email")
-def verify_email(token: str, db: Session = Depends(get_db)):
+@router.post("/refresh")
+async def refresh_token(data: TokenRefreshRequest, db: Session = Depends(get_db)):
+    """
+    유효한 Refresh 토큰으로 Access 토큰을 갱신합니다.
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload["sub"]
-    except(jwt.exceptions.ExpiredSignatureError):
-        raise HTTPException(status_code=400, detail="토큰이 만료되었습니다")
-    except(jwt.exceptions.InvalidTokenError):
-        raise HTTPException(status_code=400, detail="유효하지 않은 토큰입니다")
+    :param data: Refresh 토큰이 담긴 요청 바디
+    :type data: TokenRefreshRequest
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 새로운 토큰 정보
+    """
+    return await AuthService(AuthRepository(db)).refresh_access_token(data.refresh_token)
 
-    shadow = db.query(AuthUser).filter(AuthUser.user_id == user_id).first()
+@router.post("/password/reset/request")
+async def pw_reset_request(data: PasswordResetRequest, db: Session = Depends(get_db)):
+    """
+    비밀번호 재설정을 위한 이메일 발송을 요청합니다.
 
-    if not shadow:
-        raise HTTPException(status_code=400, detail="인증 정보가 없습니다")
+    :param data: 비밀번호를 잊은 사용자의 이메일
+    :type data: PasswordResetRequest
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 발송 결과 메시지
+    """
+    return await AuthService(AuthRepository(db)).request_pw_reset(data.email)
 
-    if shadow.verification_token != token:
-        raise HTTPException(status_code=400, detail="토큰이 일치하지 않습니다")
+@router.post("/password/reset/{user_token}", status_code=201)
+async def pw_reset_confirm(user_token: str = Path(...), data: PasswordResetConfirm = None, db: Session = Depends(get_db)):
+    """
+    임시 토큰을 사용하여 새로운 비밀번호를 등록합니다.
 
-    shadow.is_verified = True
-    shadow.verification_token = None
-    db.commit()
-    db.execute(text('REFRESH MATERIALIZED VIEW "USER_STAT"'))
-    db.commit()
-
-    return {"message": "이메일 인증 완료!"}
-
-
-# 로그인
-
-@router.post("/signin")
-def signin(data: SignInRequest, db: Session = Depends(get_db)):
-
-    # 이메일 일치 유저 찾기
-    user = db.query(User).filter(User.email == data.email).first()
-    if not user:
-        raise HTTPException(status_code=400, detail="존재하지 않는 이메일입니다")
-
-    # AuthUser 찾기
-    shadow = db.query(AuthUser).filter(AuthUser.user_id == user.user_id).first()
-    if not shadow:
-        raise HTTPException(status_code=400, detail="인증 정보 없음")
-
-    # 비밀번호 검증
-    if not pwd_context.verify(data.password, shadow.hashed_password):
-        raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않습니다")
-
-    # 이메일 인증 체크
-    if not shadow.is_verified:
-        raise HTTPException(status_code=400, detail="이메일 인증이 필요합니다")
-    
-    #로그인 성공 시 user테이블의 email에 값 추가
-    if user.email != shadow.email:
-        user.email = shadow.email
-        db.commit()
-
-    # JWT 토큰 발급
-    token = jwt.encode(
-        {"sub": str(user.user_id), "exp": datetime.utcnow() + timedelta(days=7)},
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-    return {"access_token": token}
-
+    :param user_token: URL 경로에 포함된 30분 유효 임시 토큰
+    :type user_token: str
+    :param data: 새 비밀번호 데이터
+    :type data: PasswordResetConfirm
+    :param db: 데이터베이스 세션
+    :type db: Session
+    :return: 변경 성공 결과
+    """
+    return await AuthService(AuthRepository(db)).confirm_pw_reset(user_token, data.newPassword)

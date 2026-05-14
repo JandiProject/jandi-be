@@ -4,6 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+import app.models.user_models  # noqa: F401
+import app.models.trend_models  # noqa: F401
+
 from app.routers.auth_router import router as auth_router
 from app.dependencies.database import Base, engine, init_fields, init_view
 from app.routers.platform_router import router as platform_router

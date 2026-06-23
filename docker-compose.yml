@@ -33,6 +33,8 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
+    depends_on:
+      - post-observer-service
     env_file:
       - .env
   # frontend:
@@ -45,12 +47,12 @@ services:
   #   env_file:
   #     - .env
 
-  post-observer:
+  post-observer-service:
     build: ./post_observer
-    container_name: jandi-observer
-    command: python3 -u main.py
-    depends_on:
-      - ai-server
+    container_name: jandi-post-observer-service
+    command: uvicorn server:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
     env_file:
       - .env
 

@@ -1,11 +1,11 @@
 from datetime import datetime
 from app.services import platform_service, rss_service
-from app.dependencies.rabbitmq import publish_message
+from app.dependencies.rabbitmq import publish_message, publish_messages
 import logging
 
 logger = logging.getLogger(__name__)
 
-def check_new_posts():
+def check_new_posts() -> int:
     """
     메인 비즈니스 로직: 모든 사용자-플랫폼에 대해 새 글 확인
 
@@ -15,6 +15,8 @@ def check_new_posts():
     3. 마지막 업로드 시각과 비교하여 새 글 필터링
     4. 새 글이 있으면 로그 출력 # RabbitMQ 발행 구현 해야함
     5. last_upload 업데이트
+
+    :return: 수집된 새 글 수.
     """
     logger.info("=== Starting new posts check ===")
 
@@ -23,7 +25,7 @@ def check_new_posts():
 
     if not user_platforms:
         logger.info("No user platforms found")
-        return
+        return 0
 
     total_new_posts = 0
 
@@ -58,20 +60,18 @@ def check_new_posts():
         logger.info(f"Found {len(new_articles)} new posts for {up.platform_name}/{up.account_id}")
 
         # 새 글 발견 시 로그 출력 및 RabbitMQ 발행
+        messages = []
         for article in new_articles:
             logger.info(f"  - New post: {article.title} ({article.published_at})")
-
-            # RabbitMQ 메시지 발행
-            publish_message(
-                queue_name="new_posts",
-                message={
+            messages.append(
+                {
                     "user_id": str(up.user_id),
                     "platform": up.platform_name,
-                    "article": article.model_dump(mode='json')
+                    "article": article.model_dump(mode="json"),
                 }
             )
-
             total_new_posts += 1
+        publish_messages(queue_name="new_posts", messages=messages)
 
         # last_upload 업데이트 (가장 최신 글의 발행 시각으로)
         if latest_published_at:
@@ -92,8 +92,9 @@ def check_new_posts():
         }
     )
     logger.info(f"Published refresh message: count={total_new_posts}")
+    return total_new_posts
 
-def check_inactive_users():
+def check_inactive_users() -> int:
     """
     1달 이상 글을 올리지 않은 사용자 조회 및 독촉 메일 발행
 
@@ -101,6 +102,8 @@ def check_inactive_users():
     1. DB에서 1달 이상 미업로드 사용자 조회
     2. 각 사용자에 대해 Mail 서버로 RabbitMQ 메시지 발행
     3. last_upload를 오늘 날짜로 업데이트 (스팸 방지)
+
+    :return: 발송된 알림 수.
     """
     logger.info("=== Starting inactive users check ===")
 
@@ -109,34 +112,38 @@ def check_inactive_users():
 
     if not inactive_users:
         logger.info("No inactive users found")
-        return
+        return 0
 
     total_reminders = 0
+    reminder_messages = []
 
     # 각 미업로드 사용자에 대해 처리
     for user in inactive_users:
         logger.info(f"Inactive user: {user.name} ({user.email}) - {user.days_inactive} days since last upload")
 
         # Mail 서버로 RabbitMQ 메시지 발행
-        publish_message(
-            queue_name="mail_reminders",
-            message={
+        reminder_messages.append(
+            {
                 "user_id": str(user.user_id),
                 "email": user.email,
                 "name": user.name,
                 "platform": user.platform_name,
                 "days_inactive": user.days_inactive,
-                "last_upload": user.last_upload.isoformat() if user.last_upload else None
+                "last_upload": user.last_upload.isoformat() if user.last_upload else None,
             }
         )
 
-        # last_upload를 오늘 날짜로 업데이트 (스팸 방지)
+        total_reminders += 1
+
+    publish_messages(queue_name="mail_reminders", messages=reminder_messages)
+
+    # publish 성공 후 last_upload를 오늘 날짜로 업데이트 (스팸 방지)
+    for user in inactive_users:
         platform_service.update_last_upload(
             user_id=user.user_id,
             platform_name=user.platform_name,
             last_upload_time=datetime.now()
         )
 
-        total_reminders += 1
-
     logger.info(f"=== Finished inactive check: {total_reminders} reminders sent ===")
+    return total_reminders
